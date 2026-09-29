@@ -1,0 +1,139 @@
+{
+  "menu": [
+    {
+      "menuHeader": "Operations"
+    },
+    {
+      "url": "/",
+      "name": "Home",
+      "icon": "bx bx-home-alt",
+      "slug": "dashboard"
+    },
+    {
+      "url": "/matches",
+      "name": "Matches",
+      "icon": "bx bx-trophy",
+      "slug": "matches"
+    },
+    {
+      "url": "/events",
+      "name": "Events",
+      "icon": "bx bx-calendar-event",
+      "slug": "events"
+    },
+    {
+      "url": "/tv",
+      "name": "TV",
+      "icon": "bx bx-tv",
+      "slug": "tv"
+    },
+    {
+      "url": "/tv-new",
+      "name": "TV New",
+      "icon": "bx bx-slideshow",
+      "slug": "tv-new"
+    },
+    {
+      "menuHeader": "Cash"
+    },
+    {
+      "url": "/cash-transactions",
+      "name": "Cash",
+      "icon": "bx bx-wallet",
+      "slug": "cash-transactions"
+    },
+    {
+      "url": "/teller-transactions",
+      "name": "Teller cash",
+      "icon": "bx bx-transfer",
+      "slug": "teller-transactions"
+    },
+    {
+      "url": "/teller-ledger",
+      "name": "Teller Ledger",
+      "icon": "bx bx-book-content",
+      "slug": "teller-ledger"
+    },
+    {
+      "url": "/teller-ledger/all",
+      "name": "Tellers' Cash on Hand",
+      "icon": "bx bx-wallet-alt",
+      "slug": "teller-ledger.all"
+    },
+    {
+      "url": "/unclaimed",
+      "name": "Unclaimed",
+      "icon": "bx bx-coin",
+      "slug": "unclaimed"
+    },
+    {
+      "url": "/remittances",
+      "name": "Remittances",
+      "icon": "bx bx-send",
+      "slug": "remittances"
+    },
+    {
+      "url": "/salaries",
+      "name": "Salaries",
+      "icon": "bx bx-credit-card",
+      "slug": "salaries"
+    },
+    {
+      "menuHeader": "Records"
+    },
+    {
+      "url": "/bets",
+      "name": "Bets",
+      "icon": "bx bx-money",
+      "slug": "bets"
+    },
+    {
+      "url": "/reports",
+      "name": "Reports",
+      "icon": "bx bx-bar-chart-alt-2",
+      "slug": "reports"
+    },
+    {
+      "url": "/closing-reports",
+      "name": "Closing Reports",
+      "icon": "bx bx-lock-alt",
+      "slug": "closing-reports"
+    },
+    {
+      "url": "/logs",
+      "name": "Logs",
+      "icon": "bx bx-history",
+      "slug": "logs"
+    },
+    {
+      "menuHeader": "Accounts"
+    },
+    {
+      "url": "/accounts/admins",
+      "name": "Admins",
+      "icon": "bx bx-shield-quarter",
+      "slug": "accounts-admins"
+    },
+    {
+      "url": "/accounts/tellers",
+      "name": "Tellers",
+      "icon": "bx bx-user-circle",
+      "slug": "accounts-tellers"
+    },
+    {
+      "menuHeader": "System"
+    },
+    {
+      "url": "/backups",
+      "name": "Backups",
+      "icon": "bx bx-data",
+      "slug": "backups"
+    },
+    {
+      "url": "/logout",
+      "name": "Logout",
+      "icon": "bx bx-log-out",
+      "slug": "logout"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+/docker/mysql/01-dump.sql
+.env.backup
+.phpunit.result.cache
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+yarn.lock
+package-lock.log
+/.idea
+/.vscode
+/public/css
+/public/js
+/public/mix-manifest.json
+# But not these files...
+!/public/assets/*
+/public/assets/js
+/public/assets/css
+/public/assets/vendor
+/_backups
+
+# --- Secrets and local configuration: never commit ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# --- Data, backups and generated files ---
+*.sql
+*.sql.gz
+*.dump
+*.enc
+*.bak
+*.bak2
+*.tgz
+*.zip
+/storage/logs/*.log
+/docker/ssh/authorized_keys
+/scripts/*.new
+
+# Teller app installers (build artifacts, distributed separately)
+/public/*.apk
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+!/docker/mysql/02-grants.sql

@@ -1,0 +1,13 @@
+{
+  "menu": [
+    {
+      "menuHeader": "Menu"
+    },
+    {
+      "url": "/logout",
+      "name": "Logout",
+      "icon": "menu-icon tf-icons bx bx-log-in",
+      "slug": "logout"
+    }
+  ]
+}

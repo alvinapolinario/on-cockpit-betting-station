@@ -1,0 +1,2 @@
+# Public keys allowed to SSH into the app container, one per line.
+# Copy this file to authorized_keys (not committed).

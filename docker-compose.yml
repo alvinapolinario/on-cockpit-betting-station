@@ -1,0 +1,57 @@
+services:
+  app:
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    container_name: sabonglara-app
+    ports:
+      - "${APP_PORT:-80}:80"
+      - "${WEBSOCKET_PORT:-6001}:6001"
+      - "${SSH_PORT:-2222}:22"
+    environment:
+      APP_URL: "${APP_URL:-http://localhost}"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: "${DB_DATABASE:-sabong_lara_db}"
+      DB_USERNAME: "${DB_USERNAME:-sabong_root}"
+      DB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}"
+      BROADCAST_DRIVER: pusher
+      PUSHER_APP_ID: "${PUSHER_APP_ID:-local}"
+      PUSHER_APP_KEY: "${PUSHER_APP_KEY:-local}"
+      PUSHER_APP_SECRET: "${PUSHER_APP_SECRET:-local}"
+      PUSHER_APP_CLUSTER: "${PUSHER_APP_CLUSTER:-mt1}"
+      PUSHER_HOST: 127.0.0.1
+      PUSHER_PORT: 6001
+      PUSHER_SCHEME: http
+    volumes:
+      - .:/var/www/html
+      - ./docker/ssh/authorized_keys:/run/ssh-keys/authorized_keys:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  mysql:
+    image: mariadb:10.11
+    container_name: sabonglara-mysql
+    ports:
+      - "${FORWARD_DB_PORT:-3307}:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}"
+      MARIADB_DATABASE: "${DB_DATABASE:-sabong_lara_db}"
+      MARIADB_USER: "${DB_USERNAME:-sabong_root}"
+      MARIADB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}"
+    volumes:
+      - sabonglara-mysql:/var/lib/mysql
+      - ./docker/mysql/01-dump.sql:/docker-entrypoint-initdb.d/01-dump.sql:ro
+      - ./docker/mysql/02-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  sabonglara-mysql:
