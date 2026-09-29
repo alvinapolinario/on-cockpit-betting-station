@@ -43,8 +43,8 @@ services:
       MARIADB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}"
     volumes:
       - sabonglara-mysql:/var/lib/mysql
-      - ./docker/mysql/01-dump.sql:/docker-entrypoint-initdb.d/01-dump.sql:ro
-      - ./docker/mysql/02-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
+      # Structure only (no data): loaded the first time the database volume is created.
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s

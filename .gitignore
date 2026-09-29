@@ -51,4 +51,4 @@ package-lock.log
 # OS / editor noise
 .DS_Store
 Thumbs.db
-!/docker/mysql/02-grants.sql
+!/docker/mysql/init/*.sql

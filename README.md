@@ -1,66 +1,257 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# On-Cockpit Betting Station
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Onsite (offline) cockpit betting system for **Blueknife Gallera**: teller betting and payouts,
+fight results, cash control, teller ledgers, and **sealed event closing reports** for the
+Treasury Office and BIR.
 
-## About Laravel
+Companion system: **[sabong-bir-compliance](https://github.com/alvinapolinario/sabong-bir-compliance)**
+(runs on the VPS; receives the sealed event packages).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+```
+ARENA (offline network)                                   INTERNET
+Betting server (this repo) ── teller phones (Wi-Fi)
+  └ Close & seal event → encrypted package ──(laptop)──►  BIR Compliance System (VPS)
+  ◄──────────────── acknowledgment code ────────────────  verifies, stores, reports
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Contents
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. [What runs where](#1-what-runs-where)
+2. [First-time deployment (production, at the arena)](#2-first-time-deployment-production-at-the-arena)
+3. [Connecting to the BIR Compliance System](#3-connecting-to-the-bir-compliance-system)
+4. [Moving existing data to a new server](#4-moving-existing-data-to-a-new-server-optional)
+5. [Event-day procedure](#5-event-day-procedure)
+6. [Updating to a new version](#6-updating-to-a-new-version)
+7. [Backups and restore](#7-backups-and-restore)
+8. [Importing past events (legacy)](#8-importing-past-events-legacy)
+9. [Rolling back](#9-rolling-back)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Local sandbox (development)](#11-local-sandbox-development)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 1. What runs where
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Two Docker containers (`docker-compose.yml`):
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Container | Contents | Ports (host) |
+|---|---|---|
+| `sabonglara-app` | nginx → PHP-FPM (Laravel), WebSocket server, SSH (key-only); all kept alive by supervisord | `80` web/API, `6001` WebSocket, `2222` SSH |
+| `sabonglara-mysql` | MariaDB 10.11 | `127.0.0.1:3309` (this machine only) |
 
-## Laravel Sponsors
+Stored outside git, on the server only:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+| Path | What | Back up offline? |
+|---|---|---|
+| `.env` | passwords, app key, settings | yes |
+| `storage/app/keys/` | `sign.key` (seals), `backup.key` (backups), `legacy-sign.key`, `vps.pub` | **yes: sealed offline copy** |
+| `storage/app/backups/` | encrypted database backups | copy to a second disk |
+| `storage/app/closings/` | sealed detail files, legacy packages | yes |
+| database volume `sabonglara-mysql` | all live data | via backups |
 
-### Premium Partners
+> Without `storage/app/keys/backup.key` no backup can be restored. Without `sign.key` no further events can be sealed under this server's identity.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+## 2. First-time deployment (production, at the arena)
 
-## Contributing
+Do steps 2.1–2.6 **while the server still has internet** (it downloads Docker images, PHP and
+JavaScript packages). After that the server runs fully offline.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2.1 Prepare the server
+- A dedicated machine (Ubuntu 24.04 LTS recommended) with **full-disk encryption**, on a **UPS**, in a locked cabinet.
+- A **fixed IP address** on the arena network (DHCP reservation on the router), e.g. `192.168.10.10`.
+- Install Docker and git:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 git
+  sudo usermod -aG docker $USER   # log out and in again
+  ```
 
-## Code of Conduct
+### 2.2 Get the code
+The repository is private: add the server's SSH public key as a read-only **Deploy key**
+(GitHub → repository → Settings → Deploy keys), then:
+```bash
+sudo mkdir -p /opt && cd /opt
+sudo git clone git@github.com:alvinapolinario/on-cockpit-betting-station.git betting-station
+sudo chown -R $USER: /opt/betting-station && cd /opt/betting-station
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 2.3 Configure `.env`
+```bash
+cp .env.example .env
+```
+Edit `.env` and set at least:
 
-## Security Vulnerabilities
+| Setting | Value |
+|---|---|
+| `DB_PASSWORD` | long random value: `openssl rand -hex 24` (**required**; also the MariaDB root password) |
+| `APP_URL` | `http://<fixed IP>` |
+| `ARENA_NAME` | e.g. `"Blueknife Gallera"` |
+| `PUSHER_APP_KEY`, `PUSHER_APP_SECRET` | random values (`openssl rand -hex 16`) |
+| `SEAL_SERVER_ID` | unique name, e.g. `blueknife-srv01` |
+| `SSH_PORT` | `127.0.0.1:2222` unless SSH from other machines is needed |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Keep `APP_ENV=production`, `APP_DEBUG=false`, `SEAL_REQUIRE_SECOND_APPROVER=true`,
+`BACKUP_REQUIRE_SECOND_APPROVER=true`, `BACKUP_ALLOW_RAW_SQL_IMPORT=false`.
 
-## License
+(Optional) SSH into the app container: put allowed public keys, one per line, in
+`docker/ssh/authorized_keys` (see `docker/ssh/authorized_keys.example`).
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 2.4 Build and start
+```bash
+docker compose build app
+docker compose up -d
+docker logs -f sabonglara-app      # wait for: "websocket entered RUNNING state"
+```
+The first start creates the database **structure** from `docker/mysql/init/` (no data), installs
+PHP/JS dependencies, builds the front-end and applies migrations.
+
+> If `apt-get` hangs during the build: some networks block plain-HTTP access to
+> `deb.debian.org`. The Dockerfile already switches Debian to HTTPS.
+
+### 2.5 App key, first administrators, keys
+```bash
+docker exec sabonglara-app php artisan key:generate --force
+docker compose restart app
+
+# Administrators (two are needed for the two-person rule on sealing and restores)
+docker exec -it sabonglara-app artisan admin:create --username=admin --name="System Administrator"
+docker exec -it sabonglara-app artisan admin:create --username=supervisor --name="Arena Supervisor"
+
+# Keys: run ONCE per server
+docker exec sabonglara-app artisan seal:keygen     # prints the PUBLIC key to register on the VPS
+docker exec sabonglara-app artisan backup:keygen
+```
+Copy `storage/app/keys/` to **two encrypted USB drives stored in a safe** (never to GitHub or the VPS).
+
+### 2.6 Connect to the BIR Compliance System
+See [section 3](#3-connecting-to-the-bir-compliance-system).
+
+### 2.7 Lock down and go offline
+- Teller Wi-Fi on its own network (VLAN / access point) with **no internet uplink**; allow only registered phones.
+- Teller app server address: `http://<fixed IP>`.
+- Sign in at `http://<fixed IP>` with the admin account; add tellers under *Accounts → Tellers*.
+- Checklist: `docker ps` shows both containers `healthy`; *System → Backups → Create backup now* succeeds;
+  *Records → Closing Reports* shows no key warnings.
+
+## 3. Connecting to the BIR Compliance System
+
+Two public keys are exchanged once (private keys never leave their machine):
+
+1. **Betting server → VPS.** The public key printed by `artisan seal:keygen` (re-display it with
+   `cat storage/app/keys/sign.pub`) is registered on the VPS:
+   ```bash
+   # on the VPS
+   cd /opt/bir-compliance && sudo -u bircomp node scripts/register-server.js \
+     --server-id <SEAL_SERVER_ID> --name "Blueknife Gallera betting server" --kind live --public-key <base64>
+   ```
+2. **VPS → betting server.** The VPS installer prints `SEAL_VPS_PUBLIC_KEY=...`. Put that line in this
+   server's `.env`, then `docker compose up -d app`.
+3. Check: *Records → Closing Reports* no longer warns about the VPS key.
+
+## 4. Moving existing data to a new server (optional)
+
+To start the new server with the data of an old one (before the first event on the new server):
+```bash
+# On the OLD server: consistent dump
+docker exec sabonglara-mysql sh -c 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction --routines --triggers "$MARIADB_DATABASE"' > old.sql
+# Copy old.sql to the NEW server (encrypted USB), then on the NEW server:
+docker compose stop app
+docker exec -i sabonglara-mysql sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "DROP DATABASE $MARIADB_DATABASE; CREATE DATABASE $MARIADB_DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"'
+grep -avE '^(CREATE DATABASE|USE )' old.sql | docker exec -i sabonglara-mysql sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"'
+docker compose start app            # applies any newer migrations on start
+shred -u old.sql
+```
+
+## 5. Event-day procedure
+
+| When | Who | Where / how |
+|---|---|---|
+| Before gates open | Admin | *Events*: create the event, **check the commission rate** (e.g. `0.07` = 7%) and set it Active (only one Active event is allowed). |
+| | Admin | *Events → tellers*: assign tellers. Each gets opening cash; the Teller Ledger starts with an "Opening cash" line. |
+| | Admin | *System → Backups → Create backup now*. |
+| During the event | Admin | *Matches*: open betting → close betting → declare the result (only after betting is closed). Only the latest settled fight can be corrected, and only before any payout. |
+| | Tellers | Teller app: bets, payouts, cash-in/cash-out requests. |
+| | Admin | Approve cash-in/cash-out requests; watch *Cash → Tellers' Cash on Hand* (all OK). |
+| After the last fight | Admin | Settle every fight with bets; resolve all pending cash requests. |
+| | Supervisor | *Remittances*: count each teller's cash by denomination. |
+| | Admin | *Cash → Teller Ledger → Print statement* for every teller; **each teller signs**. |
+| | Admin + 2nd admin | *Records → Closing Reports → Close & seal* (type `CLOSE`, second admin approves). The event is frozen. |
+| | Admin | *Report*: print the closing report; supervisor and Treasury witness sign; note the **seal code**. |
+| | Admin | *System → Backups → Create backup now*. |
+| | Admin | *Closing Reports → Download package* (on the upload laptop, connected to the arena network). |
+| Later, online | Accounting | Laptop **disconnected from the arena network**, then online: upload the package in the BIR Compliance System; compare the seal code with the signed report; note the **ACK code**. |
+| Next time on site | Admin | *Closing Reports → Ack code*: enter the ACK code. |
+
+## 6. Updating to a new version
+
+Between events only (never during an event):
+```bash
+cd /opt/betting-station
+docker exec sabonglara-app artisan backup:create        # safety backup first
+git pull                                                # needs internet (or copy the new version)
+docker compose build app
+docker compose up -d app                                # migrations run automatically on start
+docker logs --tail 30 sabonglara-app                    # check for errors
+docker exec sabonglara-app supervisorctl -c /etc/supervisor/sabonglara.conf status
+```
+Then check sign-in, *Matches*, *Closing Reports* and the teller app.
+
+## 7. Backups and restore
+
+- Create: *System → Backups → Create backup now*, or `docker exec sabonglara-app artisan backup:create`.
+  Backups are encrypted with `backup.key` and signed with `sign.key`; they stay on this server
+  (`storage/app/backups/`). **Copy that folder to a second disk after every event.**
+- List / verify: `artisan backup:list`, `artisan backup:verify <file>`.
+- Restore (between events): *System → Backups → Restore…* (reason + second admin + `RESTORE`), or in an
+  emergency from the console:
+  ```bash
+  docker exec -it sabonglara-app artisan backup:restore <file.bak.enc> --reason="why"
+  ```
+  A backup of the current state is taken first; if the restore fails it is rolled back automatically.
+  Backups older than a sealed event are refused (they would un-seal it).
+
+## 8. Importing past events (legacy)
+
+Past events available only as database backups can be sealed as **Legacy** packages (own key and
+sequence, labelled "reconstructed from backup" in the BIR system):
+```bash
+docker exec sabonglara-app artisan legacy:keygen           # once; register its public key on the VPS with --kind legacy
+# put the .sql backups in storage/app/backups/legacy/ and list them, oldest first, in ORDER.txt
+bash scripts/legacy-import.sh
+```
+Packages are written to `storage/app/closings/legacy/packages/`; upload them in order.
+
+## 9. Rolling back
+
+```bash
+git log --oneline                      # find the previous version
+git checkout <commit>                  # or: git revert <bad commit>
+docker compose build app && docker compose up -d app
+```
+If a migration of the bad version changed data, restore the backup taken before the update (section 7).
+Write-once records (seals, ledger) are never removed by a rollback.
+
+## 10. Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Site shows "503 Service Unavailable" | Stuck in maintenance mode: `docker exec sabonglara-app artisan up` |
+| Devices cannot reach the server | The server's IP changed: check `ip addr` (Linux) and use the fixed IP; phones must be on the arena Wi-Fi |
+| App says "Session expired" | Teller logs in again (tokens expire after `API_TOKEN_HOURS`) |
+| Live TV / balances do not update | `docker exec sabonglara-app supervisorctl -c /etc/supervisor/sabonglara.conf status` (websocket must be RUNNING) |
+| "Cannot seal: ..." | Settle every fight that has bets; approve/decline pending cash requests |
+| Ledger shows MISMATCH | Do not edit the database. Report it; corrections are made as adjustment lines |
+| Logs | `docker logs sabonglara-app` · `storage/logs/laravel.log` |
+
+## 11. Local sandbox (development)
+
+```bash
+cp .env.example .env     # set APP_ENV=local, DB_PASSWORD, and optionally the sandbox-only switches:
+                         # SEAL_REQUIRE_SECOND_APPROVER=false, BACKUP_REQUIRE_SECOND_APPROVER=false,
+                         # BACKUP_ALLOW_RAW_SQL_IMPORT=true
+docker compose up -d
+docker exec sabonglara-app php artisan key:generate --force
+docker exec -it sabonglara-app artisan admin:create --username=admin
+docker exec sabonglara-app artisan seal:keygen && docker exec sabonglara-app artisan backup:keygen
+docker exec sabonglara-app artisan seal:vps-test-keygen    # stand-in VPS key, sandbox only
+```
+Never copy sandbox keys or sandbox `.env` settings to production.
