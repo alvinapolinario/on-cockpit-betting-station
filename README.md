@@ -27,6 +27,7 @@ Betting server (this repo) ── teller phones (Wi-Fi)
 9. [Rolling back](#9-rolling-back)
 10. [Troubleshooting](#10-troubleshooting)
 11. [Local sandbox (development)](#11-local-sandbox-development)
+12. [Docker reference: database, ports and credentials](#12-docker-reference-database-ports-and-credentials)
 
 ---
 
@@ -255,3 +256,95 @@ docker exec sabonglara-app artisan seal:keygen && docker exec sabonglara-app art
 docker exec sabonglara-app artisan seal:vps-test-keygen    # stand-in VPS key, sandbox only
 ```
 Never copy sandbox keys or sandbox `.env` settings to production.
+
+## 12. Docker reference: database, ports and credentials
+
+Everything below comes from `docker-compose.yml` and `.env`. **Real passwords never go in this
+README or in git**. They live only in `.env` on the server and in the sealed offline record
+(see [12.5](#125-deployment-record-fill-in-on-paper-not-in-git)).
+
+### 12.1 Containers
+
+| Service | Container name | Image | Role |
+|---|---|---|---|
+| `app` | `sabonglara-app` | built from `docker/app/Dockerfile` | nginx, PHP-FPM (Laravel), WebSocket server, SSH (supervisord) |
+| `mysql` | `sabonglara-mysql` | `mariadb:10.11` | database |
+
+### 12.2 Database
+
+| Item | Value | `.env` setting |
+|---|---|---|
+| Engine | MariaDB 10.11 | n/a |
+| Database name | `sabong_lara_db` | `DB_DATABASE` |
+| Application user | `sabong_root`: a normal user with all rights on `sabong_lara_db` only. Despite the name, it is **not** MariaDB's `root` | `DB_USERNAME` |
+| Application user password | your generated value (`openssl rand -hex 24`) | `DB_PASSWORD` (**required**; `docker compose` refuses to start without it) |
+| MariaDB `root` password | **the same value** as `DB_PASSWORD` | `DB_PASSWORD` |
+| Host (from the app container) | `mysql` (the service name) | `DB_HOST` |
+| Port inside Docker | `3306` | `DB_PORT` |
+| Port on the server | `127.0.0.1:3309` (only this machine can connect) | `FORWARD_DB_PORT` |
+| Data volume | `sabonglara-mysql` | n/a |
+| Initial structure | `docker/mysql/init/01-schema.sql`, `02-grants.sql` (run only when the volume is first created) | n/a |
+
+> Always set `FORWARD_DB_PORT=127.0.0.1:3309`. If it is missing, `docker-compose.yml` falls back to
+> `3307` on **all** network interfaces, which would expose the database to the arena Wi-Fi.
+
+**Connecting to the database**
+```bash
+# From the server, through the container (no open port needed):
+docker exec -it sabonglara-mysql mariadb -u sabong_root -p sabong_lara_db
+
+# As MariaDB root:
+docker exec -it sabonglara-mysql mariadb -u root -p
+```
+A desktop tool (HeidiSQL, DBeaver) on the server itself connects to host `127.0.0.1`, port `3309`,
+user `sabong_root`, database `sabong_lara_db`. From another computer, use an SSH tunnel to the
+server; do not open the port.
+
+### 12.3 Ports
+
+| Host port | Container port | `.env` setting | Used for |
+|---|---|---|---|
+| `80` | `80` | `APP_PORT` | web admin and teller app API (`http://<fixed IP>`) |
+| `6001` | `6001` | `WEBSOCKET_PORT` | live updates (laravel-websockets / Pusher protocol) |
+| `2222` (`127.0.0.1:2222` recommended) | `22` | `SSH_PORT` | SSH into the app container, key-only (`docker/ssh/authorized_keys`) |
+| `127.0.0.1:3309` | `3306` | `FORWARD_DB_PORT` | MariaDB, this machine only |
+
+### 12.4 Other related settings
+
+| Setting | Value / where it comes from |
+|---|---|
+| `APP_KEY` | generated with `docker exec sabonglara-app php artisan key:generate --force` |
+| `PUSHER_APP_ID` / `PUSHER_APP_KEY` / `PUSHER_APP_SECRET` | WebSocket credentials; random values (`openssl rand -hex 16`) |
+| `PUSHER_HOST` / `PUSHER_PORT` | `127.0.0.1` / `6001` (fixed in `docker-compose.yml`) |
+| `SEAL_SERVER_ID` | this server's name, registered on the BIR VPS (e.g. `blueknife-srv01`) |
+| `SEAL_VPS_PUBLIC_KEY` | printed by the BIR system's installer |
+| Keys | `storage/app/keys/` (`sign.key`, `backup.key`, `legacy-sign.key`, `vps.pub`) |
+| Backups | `storage/app/backups/` |
+
+**Changing the database password later.** MariaDB applies `DB_PASSWORD` **only when the volume is
+first created**. Editing `.env` afterwards does not change it. Change it inside MariaDB first, then
+update `.env`:
+```bash
+docker exec -it sabonglara-mysql mariadb -u root -p
+#   ALTER USER 'sabong_root'@'%' IDENTIFIED BY '<new>';
+#   ALTER USER 'root'@'%' IDENTIFIED BY '<new>';  ALTER USER 'root'@'localhost' IDENTIFIED BY '<new>';
+# then set DB_PASSWORD=<new> in .env and:
+docker compose up -d
+```
+
+> `docker compose down -v` **deletes the database volume and all data**. Use plain `docker compose down`.
+
+### 12.5 Deployment record (fill in on paper, not in git)
+
+Fill this in during deployment and keep it with the offline key copies:
+
+| Item | Value |
+|---|---|
+| Server fixed IP | |
+| `DB_DATABASE` / `DB_USERNAME` | `sabong_lara_db` / `sabong_root` |
+| `DB_PASSWORD` (also MariaDB root) | |
+| DB port on server | `127.0.0.1:3309` |
+| `PUSHER_APP_KEY` / `PUSHER_APP_SECRET` | |
+| `SEAL_SERVER_ID` | |
+| Admin usernames | |
+| Date deployed / by | |
