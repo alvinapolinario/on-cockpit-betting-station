@@ -103,6 +103,13 @@ Route::middleware(['isAdmin'])->group(function () {
 
 
   // Teller account ledger (admins only)
+  // Read-only audit of closed events (GET only).
+  Route::prefix('event-audit')->group(function () {
+    Route::get('/', 'EventAuditController@index')->name('event-audit');
+    Route::get('/{event_id}', 'EventAuditController@show')->whereNumber('event_id')->name('event-audit.show');
+    Route::get('/{event_id}/verify', 'EventAuditController@verify')->whereNumber('event_id')->name('event-audit.verify');
+  });
+
   Route::prefix('teller-ledger')->group(function () {
     Route::get('/', 'TellerLedgerController@index')->name('teller-ledger');
     Route::get('/all', 'TellerLedgerController@all')->name('teller-ledger.all');

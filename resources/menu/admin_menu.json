@@ -100,6 +100,12 @@
       "slug": "closing-reports"
     },
     {
+      "url": "/event-audit",
+      "name": "Event Audit",
+      "icon": "bx bx-search-alt",
+      "slug": "event-audit"
+    },
+    {
       "url": "/logs",
       "name": "Logs",
       "icon": "bx bx-history",
