@@ -78,7 +78,10 @@ sudo chown -R $USER: /opt/betting-station && cd /opt/betting-station
 ### 2.3 Configure `.env`
 ```bash
 cp .env.example .env
+sudo chown root:33 .env && sudo chmod 640 .env   # private, but readable by the web user (www-data, id 33)
 ```
+> `.env` must be readable by `www-data`: with `600 root:root` the site returns **500** ("No application encryption key").
+
 Edit `.env` and set at least:
 
 | Setting | Value |
@@ -235,6 +238,8 @@ Write-once records (seals, ledger) are never removed by a rollback.
 
 | Symptom | Fix |
 |---|---|
+| Site shows "500" / log says "No application encryption key" | `APP_KEY` empty (run `php artisan key:generate --force`) or `.env` not readable by www-data (`chown root:33 .env && chmod 640 .env`); then `docker compose restart app` |
+| Backup fails: "Cannot read the definition of FUNCTION…" | Functions owned by root: `docker exec sabonglara-app artisan tinker --execute='(require base_path("database/migrations/2026_09_28_000002_recreate_stored_functions_as_app_user.php"))->up();'` |
 | Site shows "503 Service Unavailable" | Stuck in maintenance mode: `docker exec sabonglara-app artisan up` |
 | Devices cannot reach the server | The server's IP changed: check `ip addr` (Linux) and use the fixed IP; phones must be on the arena Wi-Fi |
 | App says "Session expired" | Teller logs in again (tokens expire after `API_TOKEN_HOURS`) |

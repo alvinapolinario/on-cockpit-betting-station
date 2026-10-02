@@ -859,7 +859,9 @@ DELIMITER ;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 
--- Record the migrations already contained in this schema.
+-- Record the migrations already contained in this schema. The function-ownership
+-- migration is deliberately NOT listed: it must run on first start as the app user
+-- (this file is loaded by MariaDB as root, which would otherwise own the functions).
 /*M!999999\- enable the sandbox mode */ 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -879,7 +881,6 @@ INSERT INTO `migrations` VALUES
 (2,'2019_12_14_000001_create_personal_access_tokens_table',1),
 (3,'2025_07_17_230006_create_failed_jobs_table',2),
 (4,'2026_09_28_000001_create_event_closings_table',2),
-(5,'2026_09_28_000002_recreate_stored_functions_as_app_user',2),
 (6,'2026_09_29_000001_harden_tokens_and_claims',3),
 (7,'2026_09_29_000002_create_teller_ledger',4);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
