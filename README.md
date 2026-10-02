@@ -192,8 +192,9 @@ Between events only (never during an event):
 cd /opt/betting-station
 docker exec sabonglara-app artisan backup:create        # safety backup first
 git pull                                                # needs internet (or copy the new version)
+rm -f public/mix-manifest.json                          # rebuild CSS/JS (menu, pages) on start
 docker compose build app
-docker compose up -d app                                # migrations run automatically on start
+docker compose up -d app                                # migrations and the asset build run on start
 docker logs --tail 30 sabonglara-app                    # check for errors
 docker exec sabonglara-app supervisorctl -c /etc/supervisor/sabonglara.conf status
 ```
