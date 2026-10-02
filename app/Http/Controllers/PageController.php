@@ -42,6 +42,9 @@ class PageController extends Controller
         ->with('unclaimed', 0)
         ->with('current_match', null)
         ->with('total_bets', 0)
+        ->with('gross_bets', 0)
+        ->with('voided_bets', 0)
+        ->with('voided_count', 0)
         ->with('matches', collect())
         ->with('categories', [])
         ->with('meronData', [])
@@ -75,6 +78,10 @@ class PageController extends Controller
     ->where('match_status', 'Completed')
     ->sum('bet_amount');
 
+    // Gross = every bet placed in the event, including voided ones (as in the closing report).
+    $gross_bets = $bets->sum('bet_amount');
+    $voidedBets = $bets->where('bet_status', 2);
+
     $betStats = $bets->groupBy('match_number')->map(function ($group) {
       $first = $group->first();
       return [
@@ -96,6 +103,9 @@ class PageController extends Controller
     ->with('unclaimed', $unclaimed)
     ->with('current_match', $current_match)
     ->with('total_bets', $total_bets)
+    ->with('gross_bets', $gross_bets)
+    ->with('voided_bets', $voidedBets->sum('bet_amount'))
+    ->with('voided_count', $voidedBets->count())
     ->with('matches', $matches)
     ->with('categories', $categories)
     ->with('meronData', $meronData)
