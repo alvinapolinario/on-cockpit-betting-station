@@ -21,4 +21,4 @@
 
 <!-- Page Styles -->
 @yield('page-style')
-<link rel="stylesheet" href="{{ asset('assets/css/arena-nav.css') }}?v=5" />
+<link rel="stylesheet" href="{{ asset('assets/css/arena-nav.css') }}?v=6" />

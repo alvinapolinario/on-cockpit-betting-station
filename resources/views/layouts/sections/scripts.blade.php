@@ -15,5 +15,5 @@
 
 <!-- BEGIN: Page JS-->
 @yield('page-script')
-<script src="{{ asset('assets/js/arena-nav.js') }}?v=5"></script>
+<script src="{{ asset('assets/js/arena-nav.js') }}?v=6"></script>
 <!-- END: Page JS-->
