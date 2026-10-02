@@ -23,4 +23,8 @@ return [
 
   // Random digits in a bet receipt code (cryptographically random).
   'receipt_random_digits' => (int) env('RECEIPT_RANDOM_DIGITS', 6),
+
+  // DEMO ONLY: when no event is active, show the most recent closed event on
+  // the dashboard (read-only figures). Keep false at the arena.
+  'dashboard_show_last_event' => (bool) env('DASHBOARD_SHOW_LAST_EVENT', false),
 ];

@@ -35,6 +35,11 @@ class PageController extends Controller
     $event = Event::where('event_status', 'Active')
     ->first();
 
+    // Demo only (DASHBOARD_SHOW_LAST_EVENT): show the latest closed event when none is active.
+    if (empty($event) && config('betting.dashboard_show_last_event')) {
+      $event = Event::where('event_status', 'Closed')->orderByDesc('event_date')->orderByDesc('event_id')->first();
+    }
+
     if (empty($event)) {
       return view('dashboard')
         ->with('bets', collect())

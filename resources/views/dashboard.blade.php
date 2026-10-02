@@ -258,8 +258,10 @@ $estimatedRevenue = collect($revenue)->sum();
       <p>Live event totals, fight results, and remittance watch-points.</p>
     </div>
     <div class="dash-event">
-      <p class="dash-kicker">Current event</p>
+      @php $isLastClosed = $event && $event->event_status === 'Closed'; @endphp
+      <p class="dash-kicker">{{ $isLastClosed ? 'Last event · closed (demo view)' : 'Current event' }}</p>
       <strong>{{ $event->event_name ?? 'No active event' }}</strong>
+      @if ($isLastClosed)<p class="dash-note mb-0">{{ $event->event_date }} · figures are final, nothing can change</p>@endif
     </div>
   </div>
 
