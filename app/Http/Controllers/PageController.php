@@ -83,9 +83,12 @@ class PageController extends Controller
     ->where('match_status', 'Completed')
     ->sum('bet_amount');
 
-    // Gross = every bet placed in the event, including voided ones (as in the closing report).
-    $gross_bets = $bets->sum('bet_amount');
-    $voidedBets = $bets->where('bet_status', 2);
+    // Gross = every bet placed in the event, including voided ones. Counted by fight, exactly
+    // like the closing report (bets_view also drops bets whose teller assignment was removed).
+    $eventBets = DB::table('bets')->join('matches', 'matches.match_id', '=', 'bets.match_id')
+      ->where('matches.event_id', $event->event_id);
+    $gross_bets = (clone $eventBets)->sum('bets.bet_amount');
+    $voidedBets = (clone $eventBets)->where('bets.bet_status', 2)->selectRaw('COUNT(*) AS n, COALESCE(SUM(bets.bet_amount), 0) AS amount')->first();
 
     $betStats = $bets->groupBy('match_number')->map(function ($group) {
       $first = $group->first();
@@ -109,8 +112,8 @@ class PageController extends Controller
     ->with('current_match', $current_match)
     ->with('total_bets', $total_bets)
     ->with('gross_bets', $gross_bets)
-    ->with('voided_bets', $voidedBets->sum('bet_amount'))
-    ->with('voided_count', $voidedBets->count())
+    ->with('voided_bets', $voidedBets->amount)
+    ->with('voided_count', $voidedBets->n)
     ->with('matches', $matches)
     ->with('categories', $categories)
     ->with('meronData', $meronData)
