@@ -331,7 +331,7 @@ function renderFightHistory(matches) {
 }
 
 window.Echo.channel("fight-history")
-.listen("MatchesUpdated", (e) => {
+.listen(".MatchesUpdated", (e) => {
     renderFightHistory(e.match);
 });
 
@@ -339,7 +339,7 @@ init();
 
 
 window.Echo.channel("tv-display")
-    .listen("TVDisplayUpdated", (e) => {
+    .listen(".TVDisplayUpdated", (e) => {
 
         // e.match contains the updated match data.
         if (e.match.is_display == 1) {

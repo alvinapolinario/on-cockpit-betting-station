@@ -648,7 +648,7 @@ $configData = Helper::appClasses();
   }
 
   window.Echo.channel("fight-history")
-  .listen("MatchesUpdated", (e) => {
+  .listen(".MatchesUpdated", (e) => {
       renderFightHistory(e.match);
   });
 
@@ -1016,7 +1016,7 @@ $(document).on("change", ".toggle-display", function () {
         data: { is_display: isDisplay },
         success: function (response) {
             toastr.success(response.message);
-               window.Echo.channel("fight-history").listen("MatchesUpdated", () => {}); // Refresh table
+               window.Echo.channel("fight-history").listen(".MatchesUpdated", () => {}); // Refresh table
         },
         error: function (xhr) {
             toastr.error((xhr.responseJSON && xhr.responseJSON.message) || "Failed to update TV display status.");
