@@ -35,7 +35,7 @@ class AdminController extends Controller
 
     $latestMatch = DB::table('matches')
     ->where('event_id', $event->event_id)
-    ->orderByDesc('match_number')
+    ->orderByDesc('match_id')
     ->first();
 
     $cash_out = DB::table('cash_outs_view')

@@ -39,7 +39,7 @@ class EventTellerController extends Controller
 
     $latestMatch = DB::table('matches')
     ->where('event_id', $account->event_id)
-    ->orderByDesc('match_number')
+    ->orderByDesc('match_id')
     ->first();
 
 

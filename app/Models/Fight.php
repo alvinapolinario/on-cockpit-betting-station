@@ -28,6 +28,13 @@ class Fight extends Model
         'is_display',
         'meron_entry',
         'wala_entry',
+        'source_fight_uid',
+        'source_call_version',
+        'meron_details',
+        'wala_details',
+        'called_at',
+        'bet_opened_at',
+        'hold_reason',
     ];
     public function sealedEventId(): ?int
     {

@@ -56,7 +56,7 @@ class PageController extends Controller
     }
 
     $matches = Fight::where('event_id', $event->event_id)
-    ->orderBy('match_number', 'desc')
+    ->orderBy('match_id', 'desc')
     ->get();
 
     $current_match = Fight::where('event_id', $event->event_id)

@@ -127,7 +127,7 @@ class BetController extends Controller
 
       // Lock the fight: bets on the same fight are processed one at a time,
       // so the pool totals and odds can never lose an update.
-      $match = Fight::orderBy('match_number', 'desc')
+      $match = Fight::orderBy('match_id', 'desc')
       ->where('event_id', $event->event_id)
       ->where('match_bet_status', 'Open')
       ->where('match_status', 'Ongoing')

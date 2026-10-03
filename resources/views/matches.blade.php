@@ -456,6 +456,12 @@ $configData = Helper::appClasses();
     min-width: 128px;
   }
 
+  .matches-app .matches-entry-detail { font-size: 12px; margin-top: 4px; opacity: .85; line-height: 1.35; }
+  .matches-app .matches-hold { margin: 10px 0; padding: 8px 12px; border-radius: 10px; background: #fef3c7; color: #92400e; font-weight: 700; }
+  .matches-app .matches-called-note { font-size: 12px; margin: 8px 0 0; opacity: .8; }
+  .matches-app .matches-link { margin-top: 6px; font-size: 12px; font-weight: 700; }
+  .matches-app .matches-link.is-ok { color: #16a34a; }
+  .matches-app .matches-link.is-wait { color: #d97706; }
   .matches-app #get-started {
     border: 0;
     border-radius: 16px;
@@ -508,6 +514,7 @@ $configData = Helper::appClasses();
 
     $('#meron_entry').val(e.match.meron_entry);
     $('#wala_entry').val(e.match.wala_entry);
+    renderCalledFight(e.match);
 
 
     $('#meron-odds').text(e.match.meron_odds);
@@ -525,6 +532,10 @@ $configData = Helper::appClasses();
       $("#meron-wins, #wala-wins, #cancel-fight, #draw-fight, #open-bet").prop("disabled", true);
     }
 
+
+    if (e.match.hold_reason) {
+      $("#open-bet").prop("disabled", true);
+    }
 
     if (e.match.meron_bet_status) {
       $("#toggle-meron").text("Enable Meron Bet").removeClass("btn-danger").addClass("btn-success");
@@ -679,6 +690,58 @@ $configData = Helper::appClasses();
       }
     });
   });
+
+  function sideDetail(json) {
+    if (!json) return '';
+    let d; try { d = JSON.parse(json); } catch (err) { return ''; }
+    const esc = (v) => $('<div>').text(v == null ? '' : String(v)).html();
+    return [d.owner ? 'Owner: ' + esc(d.owner) : '', d.weight ? esc(d.weight) + ' g' : '', d.type ? esc(d.type) : '',
+            d.wingband ? 'WB ' + esc(d.wingband) : '', d.legband ? 'LB ' + esc(d.legband) : ''].filter(Boolean).join(' · ');
+  }
+
+  // Fights called from matching: show their details, lock the entry names, allow Hold until betting opens.
+  function renderCalledFight(m) {
+    const linked = !!m.source_fight_uid;
+    $('#meron-detail').html(linked ? sideDetail(m.meron_details) : '');
+    $('#wala-detail').html(linked ? sideDetail(m.wala_details) : '');
+    $('#meron_entry, #wala_entry').prop('readonly', linked);
+    $('#called-note').toggleClass('hidden', !(linked && m.match_status === 'Ongoing' && !m.bet_opened_at));
+    $('#hold-fight').toggleClass('hidden', !(linked && m.match_status === 'Ongoing' && !m.bet_opened_at && !m.hold_reason));
+    $('#hold-banner').toggleClass('hidden', !m.hold_reason).text(m.hold_reason ? 'ON HOLD: ' + m.hold_reason + ' (waiting for matching to fix and re-send)' : '');
+  }
+
+  $("#hold-fight").click(function () {
+    let matchId = $("#match-id").val();
+    Swal.fire({
+      title: "Put this fight on hold?",
+      text: "It goes back to the matching operator to fix. Betting cannot be opened until it is re-sent.",
+      input: "text",
+      inputPlaceholder: "Reason, e.g. wrong wingband on Meron",
+      inputValidator: (v) => !v || !v.trim() ? "Please give a reason." : undefined,
+      showCancelButton: true,
+      confirmButtonText: "Hold"
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      $.ajax({
+        url: `/matches/${matchId}/hold`, type: "POST", data: { reason: result.value },
+        headers: { "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content") },
+        success: (response) => toastr.success(response.message),
+        error: (xhr) => toastr.error((xhr.responseJSON && xhr.responseJSON.message) || "Failed to hold the fight.")
+      });
+    });
+  });
+
+  function pollBridge() {
+    $.get('/matches/bridge-status').done(function (s) {
+      const el = $('#bridge-status');
+      if (!s.enabled) { el.addClass('hidden'); return; }
+      el.removeClass('hidden is-ok is-wait');
+      if (s.pending > 0) el.addClass('is-wait').text('Matching link: ' + s.pending + ' update(s) waiting' + (s.last_error ? ' (' + s.last_error.substring(0, 80) + ')' : ''));
+      else el.addClass('is-ok').text('Matching link: OK');
+    });
+  }
+  pollBridge();
+  setInterval(pollBridge, 5000);
 
   $("#open-bet").click(function () {
     let matchId = $("#match-id").val();
@@ -997,6 +1060,7 @@ function formatCurrency(amount) {
     <div class="matches-led-wrap">
       <span id="match-bet-status" class="badge">No active fight</span>
     </div>
+    <div class="matches-link hidden" id="bridge-status" title="Link with the matching system"></div>
     <span class="matches-total">Total <span id="total-bets">0.00</span></span>
 
     <div class="matches-meters">
@@ -1033,14 +1097,19 @@ function formatCurrency(amount) {
             <div class="matches-entry is-meron">
               <label for="meron_entry">Meron entry</label>
               <input type="text" id="meron_entry" name="meron_entry">
+              <div class="matches-entry-detail" id="meron-detail"></div>
             </div>
             <div class="matches-entry is-wala">
               <label for="wala_entry">Wala entry</label>
               <input type="text" id="wala_entry" name="wala_entry">
+              <div class="matches-entry-detail" id="wala-detail"></div>
             </div>
           </div>
+          <div class="matches-hold hidden" id="hold-banner"></div>
+          <p class="matches-called-note hidden" id="called-note">Called from the matching system. Check that the cocks in the pit match these details before opening. If not, press <strong>Hold</strong>.</p>
 
           <div class="matches-actions">
+            <button class="btn btn-warning hidden" id="hold-fight">Hold</button>
             <button class="btn" id="open-bet">Open</button>
             <button class="btn" id="close-bet">Close</button>
             <button class="btn btn-danger" id="toggle-meron">Disable Meron Bet</button>

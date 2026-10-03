@@ -116,7 +116,7 @@ class AccountController extends Controller
 
         $latestMatch = DB::table('matches')
         ->where('event_id', $account->event_id)
-        ->orderByDesc('match_number')
+        ->orderByDesc('match_id')
         ->first();
 
         $this->createLog($account->account_id, "Teller App", "Login by Teller {$account->teller_name} using device UID: {$request->phone_uid}");
@@ -198,7 +198,7 @@ class AccountController extends Controller
 
         $latestMatch = DB::table('matches')
         ->where('event_id', $event->event_id)
-        ->orderByDesc('match_number')
+        ->orderByDesc('match_id')
         ->first();
 
         $cash_out = DB::table('cash_outs_view')

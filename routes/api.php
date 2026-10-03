@@ -21,6 +21,13 @@ Route::middleware('throttle:10,1')->group(function () {
 
 Route::middleware('account.token:any')->post('/logout', 'AccountController@logoutApp');
 
+// Matching system on the same server (signed with the shared bridge keys, see config/bridge.php).
+Route::middleware('throttle:240,1')->prefix('bridge/matching')->group(function () {
+  Route::post('/ping', 'BridgeController@ping');
+  Route::post('/call', 'BridgeController@call');
+  Route::post('/recall', 'BridgeController@recall');
+});
+
 // Teller app / desktop app
 Route::middleware('account.token:teller')->group(function () {
   Route::post('/change-password', 'AccountController@changePasswordApp');

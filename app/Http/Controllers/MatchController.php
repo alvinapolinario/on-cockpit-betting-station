@@ -9,6 +9,7 @@ use App\Models\Fight;
 use App\Models\EventTeller;
 use App\Events\MatchUpdated;
 use Illuminate\Http\Request;
+use App\Services\Bridge\MatchingBridge;
 use App\Events\MatchesUpdated;
 use PhpParser\Node\Expr\Match_;
 use App\Events\TVDisplayUpdated;
@@ -38,7 +39,7 @@ class MatchController extends Controller
       return response()->json([]);
     }
 
-    $match = Fight::orderBy('match_number', 'desc')
+    $match = Fight::orderBy('match_id', 'desc')
       ->where('event_id', $event->event_id)
       ->first();
 
@@ -46,7 +47,7 @@ class MatchController extends Controller
       self::newStaticMatch();
     }
 
-    return Fight::orderBy('match_number', 'desc')
+    return Fight::orderBy('match_id', 'desc')
       ->where('event_id', $event->event_id)
       ->get();
   }
@@ -78,14 +79,14 @@ class MatchController extends Controller
     if (empty($event)) {
       return;
     }
-    $match = Fight::orderBy('match_number', 'desc')
+    $match = Fight::orderBy('match_id', 'desc')
         ->where('event_id', $event->event_id)
         ->first();
 
         if(empty($match))
         {
           $this->newStaticMatch();
-          $match = Fight::orderBy('match_number', 'desc')
+          $match = Fight::orderBy('match_id', 'desc')
           ->where('event_id', $event->event_id)
           ->first();
         }
@@ -94,7 +95,7 @@ class MatchController extends Controller
         broadcast(new MatchUpdated($match));
 
 
-        $matches = Fight::orderBy('match_number', 'desc')
+        $matches = Fight::orderBy('match_id', 'desc')
           ->where('event_id', $event->event_id)
           ->get();
 
@@ -117,7 +118,7 @@ class MatchController extends Controller
       ]);
     }
 
-    $match = Fight::orderBy('match_number', 'desc')
+    $match = Fight::orderBy('match_id', 'desc')
       ->where('event_id', $event->event_id)
       ->first();
 
@@ -125,7 +126,7 @@ class MatchController extends Controller
       $match = self::newStaticMatch();
     }
 
-    $matches = Fight::orderBy('match_number', 'desc')
+    $matches = Fight::orderBy('match_id', 'desc')
       ->where('event_id', $event->event_id)
       ->get();
 
@@ -141,7 +142,7 @@ class MatchController extends Controller
     if (empty($event)) {
         return response()->json(['success' => false], 200);
     }
-    $match = Fight::orderBy('match_number', 'desc')
+    $match = Fight::orderBy('match_id', 'desc')
         ->where('event_id', $event->event_id)
         ->first();
 
@@ -159,6 +160,9 @@ class MatchController extends Controller
 
   public function newMatch()
   {
+    if (MatchingBridge::eventLinked(Event::where('event_status', 'Active')->first())) {
+      return 0; // fights of this event are called from the matching system
+    }
     DB::beginTransaction();
 
     try {
@@ -487,14 +491,26 @@ class MatchController extends Controller
       }
 
 
+      if ($r->match_bet_status === 'Open' && $match->hold_reason) {
+        DB::rollBack();
+        return response()->json(['message' => "Fight #{$match->match_number} is on HOLD ({$match->hold_reason}). Matching must fix and re-send it first."], 422);
+      }
+
       $match->match_bet_status = $r->match_bet_status;
       $match->meron_bet_status = 0;
       $match->wala_bet_status = 0;
 
-      $match->meron_entry = $r->meron_entry;
-      $match->wala_entry = $r->wala_entry;
+      // Entries of a fight called from matching come from matching, not from this form.
+      if (!MatchingBridge::fightLinked($match)) {
+        $match->meron_entry = $r->meron_entry;
+        $match->wala_entry = $r->wala_entry;
+      }
+      if ($r->match_bet_status === 'Open' && !$match->bet_opened_at) {
+        $match->bet_opened_at = now(); // from now on matching can no longer change this fight
+      }
 
       $match->save();
+      MatchingBridge::queueStatus($match, strtolower($match->match_bet_status));
 
       $this->createLog(session()->get('account_id'), "Web App", "Matches - " . 'Fight #' . $match->match_number . " bet status updated to " . $match->match_bet_status . "!" . $match);
 
@@ -503,6 +519,7 @@ class MatchController extends Controller
       broadcast(new TVDisplayUpdated($match));
 
       DB::commit();
+      $this->flushBridgeLater();
 
 
 
@@ -550,7 +567,7 @@ class MatchController extends Controller
       // Only the latest settled fight may be corrected...
       $laterSettled = Fight::where('event_id', $target->event_id)
         ->whereIn('match_status', $settled)
-        ->where('match_number', '>', $target->match_number)
+        ->where('match_id', '>', $target->match_id) // play order (fights may be played out of number order)
         ->exists();
       if ($laterSettled) {
         return response()->json(['message' => "Fight #{$target->match_number} is locked: only the latest settled fight can be corrected."], 422);
@@ -564,6 +581,11 @@ class MatchController extends Controller
       $r->merge(['dont_create' => 1]);
     }
 
+
+    // Fights of a linked event are called from matching: never create the next one here.
+    if (MatchingBridge::eventLinked(Event::where('event_id', $target->event_id)->first())) {
+      $r->merge(['dont_create' => 1]);
+    }
 
     if($r->winner == 'Draw' || $r->winner == 'Cancelled')
     {
@@ -677,6 +699,10 @@ class MatchController extends Controller
 
       $match->save();
 
+      $bridgeResult = $match->match_status === 'Completed' ? strtolower((string) $match->match_winner) : strtolower((string) $match->match_status);
+      MatchingBridge::queueResult($match, $bridgeResult, $isCorrection ? $previousResult : null,
+        DB::table('accounts')->where('account_id', session()->get('account_id') ?? $r->attributes->get('account_id'))->value('username'));
+
       $actor = session()->get('account_id') ?? $r->attributes->get('account_id');
       $channel = $r->attributes->get('token_role') ? 'Admin App' : 'Web App';
       $this->createLog($actor, $channel, "Matches - " . 'Fight #' .  $match_number . " match status updated to " . $r->match_status . "!" . $match);
@@ -687,6 +713,7 @@ class MatchController extends Controller
       broadcast(new TVDisplayUpdated($match));
 
       DB::commit();
+      $this->flushBridgeLater();
 
       if(empty($r->dont_create))
       {
@@ -696,7 +723,7 @@ class MatchController extends Controller
       broadcast(new MatchUpdated($match));
 
       $event = Event::where('event_status', 'Active')->first();
-      $matches = Fight::orderBy('match_number', 'desc')
+      $matches = Fight::orderBy('match_id', 'desc')
           ->where('event_id', $event->event_id)
           ->get();
 
@@ -710,6 +737,47 @@ class MatchController extends Controller
       DB::rollBack();
       return response()->json(['message' => $e->getMessage()], 500);
     }
+  }
+
+  /** HOLD: the cocks in the pit do not match the called fight. Only before betting opens. */
+  public function hold(Request $r)
+  {
+    $reason = trim((string) $r->input('reason'));
+    if ($reason === '' || mb_strlen($reason) > 200) {
+      return response()->json(['message' => 'Give a short reason for the hold (max 200 characters).'], 422);
+    }
+    $match = Fight::where('match_id', $r->match_id)->first();
+    if (!$match) return response()->json(['message' => 'Fight not found.'], 404);
+    if (!MatchingBridge::fightLinked($match)) return response()->json(['message' => 'Only fights called from the matching system can be put on hold.'], 422);
+    if ($match->match_status !== 'Ongoing' || $match->bet_opened_at) {
+      return response()->json(['message' => "Fight #{$match->match_number}: betting already opened. Cancel the fight instead (bets are refunded)."], 422);
+    }
+
+    DB::transaction(function () use ($match, $reason) {
+      $match->hold_reason = mb_substr($reason, 0, 200);
+      $match->save();
+      MatchingBridge::queueStatus($match, 'held', $match->hold_reason);
+      $this->createLog(session()->get('account_id'), 'Web App', "Matches - Fight #{$match->match_number} put on HOLD: {$match->hold_reason}");
+    });
+    $this->flushBridgeLater();
+    broadcast(new MatchUpdated($match));
+
+    return response()->json(['message' => "Fight #{$match->match_number} is on hold and was sent back to matching."]);
+  }
+
+  /** Link status for the operator screen. */
+  public function bridgeStatus()
+  {
+    return response()->json(MatchingBridge::status());
+  }
+
+  /** Deliver queued matching messages right after the response is sent (the worker retries anything left). */
+  private function flushBridgeLater(): void
+  {
+    if (!MatchingBridge::enabled()) return;
+    app()->terminating(function () {
+      try { MatchingBridge::flush(); } catch (\Throwable $e) { report($e); }
+    });
   }
 
   public function updatedisplay(Request $r)

@@ -72,6 +72,8 @@ Route::middleware(['isAdmin'])->group(function () {
     Route::post('/{match_id}/{match_bet_status}/update-bet-status', 'MatchController@updateMatchBetStatus');
     Route::post('/{match_id}/{match_status}/{winner}/update-match-status', 'MatchController@updateMatchStatus');
     Route::post('/{match_id}/update-display', 'MatchController@updatedisplay');
+    Route::post('/{match_id}/hold', 'MatchController@hold')->whereNumber('match_id');
+    Route::get('/bridge-status', 'MatchController@bridgeStatus');
 
     Route::post('/find/{match_id}', 'MatchController@find');
     Route::delete('/{match_id}', 'MatchController@delete');
