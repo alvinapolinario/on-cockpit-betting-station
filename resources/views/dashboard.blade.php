@@ -121,7 +121,7 @@ $estimatedRevenue = collect($revenue)->sum();
 
   .home-dash .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
     margin-bottom: 18px;
   }
@@ -151,7 +151,6 @@ $estimatedRevenue = collect($revenue)->sum();
   }
 
   .home-dash .dash-card.is-fight .dash-value { color: var(--dash-gold); }
-  .home-dash .dash-card.is-gross .dash-value { color: #60a5fa; }
   .home-dash .dash-card.is-bets .dash-value { color: #fb7185; }
   .home-dash .dash-card.is-claimed .dash-value { color: #4ade80; }
   .home-dash .dash-card.is-open .dash-value { color: #fbbf24; }
@@ -229,7 +228,6 @@ $estimatedRevenue = collect($revenue)->sum();
   .home-dash .pill-muted { background: rgba(148, 163, 184, 0.12); color: #cbd5e1; }
 
   @media (max-width: 1199.98px) {
-    .home-dash .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .home-dash .lower-grid,
     .home-dash .split-grid {
       grid-template-columns: 1fr;
@@ -271,11 +269,6 @@ $estimatedRevenue = collect($revenue)->sum();
       <p class="dash-value">{{ $current_match->match_number ?? '—' }}</p>
       <p class="dash-note">{{ $current_match ? 'Ongoing' : 'No fight in progress' }}</p>
     </article>
-    <article class="dash-card is-gross">
-      <p class="dash-label">Total gross</p>
-      <p class="dash-value">₱{{ number_format($gross_bets ?? 0, 2) }}</p>
-      <p class="dash-note">All bets placed · ₱{{ number_format($voided_bets ?? 0, 2) }} voided ({{ $voided_count ?? 0 }})</p>
-    </article>
     <article class="dash-card is-bets">
       <p class="dash-label">Total bets</p>
       <p class="dash-value">₱{{ number_format($total_bets ?? 0, 2) }}</p>
@@ -285,11 +278,6 @@ $estimatedRevenue = collect($revenue)->sum();
       <p class="dash-label">Claimed</p>
       <p class="dash-value">₱{{ number_format($claimed ?? 0, 2) }}</p>
       <p class="dash-note">Est. house: ₱{{ number_format($estimatedRevenue, 2) }}</p>
-    </article>
-    <article class="dash-card is-open">
-      <p class="dash-label">Unclaimed</p>
-      <p class="dash-value">₱{{ number_format($unclaimed ?? 0, 2) }}</p>
-      <p class="dash-note">{{ $completedCount }} completed · {{ $drawCount }} draw</p>
     </article>
   </div>
 
