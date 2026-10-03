@@ -153,8 +153,6 @@ $estimatedRevenue = collect($revenue)->sum();
   .home-dash .dash-card.is-event .dash-value { font-size: 20px; line-height: 1.3; }
   .home-dash .dash-card.is-fight .dash-value { color: var(--dash-gold); }
   .home-dash .dash-card.is-bets .dash-value { color: #fb7185; }
-  .home-dash .dash-card.is-claimed .dash-value { color: #4ade80; }
-  .home-dash .dash-card.is-open .dash-value { color: #fbbf24; }
 
   .home-dash .dash-note {
     margin: 8px 0 0;
