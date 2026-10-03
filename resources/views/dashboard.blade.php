@@ -150,6 +150,7 @@ $estimatedRevenue = collect($revenue)->sum();
     word-break: break-word;
   }
 
+  .home-dash .dash-card.is-event .dash-value { font-size: 20px; line-height: 1.3; }
   .home-dash .dash-card.is-fight .dash-value { color: var(--dash-gold); }
   .home-dash .dash-card.is-bets .dash-value { color: #fb7185; }
   .home-dash .dash-card.is-claimed .dash-value { color: #4ade80; }
@@ -255,15 +256,15 @@ $estimatedRevenue = collect($revenue)->sum();
       <h2>Welcome back, {{ session()->get('welcome_name') }}</h2>
       <p>Live event totals, fight results, and remittance watch-points.</p>
     </div>
-    <div class="dash-event">
-      @php $isLastClosed = $event && $event->event_status === 'Closed'; @endphp
-      <p class="dash-kicker">{{ $isLastClosed ? 'Last event · closed (demo view)' : 'Current event' }}</p>
-      <strong>{{ $event->event_name ?? 'No active event' }}</strong>
-      @if ($isLastClosed)<p class="dash-note mb-0">{{ $event->event_date }} · figures are final, nothing can change</p>@endif
-    </div>
   </div>
 
   <div class="kpi-grid">
+    @php $isLastClosed = $event && $event->event_status === 'Closed'; @endphp
+    <article class="dash-card is-event">
+      <p class="dash-label">{{ $isLastClosed ? 'Last event · closed (demo view)' : 'Event' }}</p>
+      <p class="dash-value">{{ $event->event_name ?? 'No active event' }}</p>
+      <p class="dash-note">{{ $event ? $event->event_date . ($isLastClosed ? ' · figures are final' : ' · ' . $event->event_status) : 'Activate an event to start betting' }}</p>
+    </article>
     <article class="dash-card is-fight">
       <p class="dash-label">Current fight</p>
       <p class="dash-value">{{ $current_match->match_number ?? '—' }}</p>
@@ -273,11 +274,6 @@ $estimatedRevenue = collect($revenue)->sum();
       <p class="dash-label">Total bets</p>
       <p class="dash-value">₱{{ number_format($total_bets ?? 0, 2) }}</p>
       <p class="dash-note">Completed fights only</p>
-    </article>
-    <article class="dash-card is-claimed">
-      <p class="dash-label">Claimed</p>
-      <p class="dash-value">₱{{ number_format($claimed ?? 0, 2) }}</p>
-      <p class="dash-note">Est. house: ₱{{ number_format($estimatedRevenue, 2) }}</p>
     </article>
   </div>
 
