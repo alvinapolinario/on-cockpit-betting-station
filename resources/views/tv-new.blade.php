@@ -250,8 +250,6 @@ function renderCurrentMatch(match) {
     $('#meron-bet').text(formatCurrency(match.meron_total_bet));
     $('#wala-bet').text(formatCurrency(match.wala_total_bet));
 
-    $('#wala-entry').text(match.wala_entry);
-    $('#meron-entry').text(match.meron_entry);
 
     $('#meron-odds').text("PAYOUT=" + match.meron_odds);
     $('#wala-odds').text("PAYOUT=" + match.wala_odds);
@@ -461,7 +459,6 @@ function hideFullScreen() {
               <br>
               <br>
               <h4 class="fw-bolder" style="font-size: 80px; margin-top: -20px;">MERON</h4>
-              <h2 class="fw-light" id="meron-entry" style="font-size: 80px; margin-top: -20px;"></h2>
               <h2 class="fw-bolder yellow" id="meron-bet" style="font-size: 100px; margin-top: -20px;"></h2>
               <h3 id="meron-odds" style="font-size: 70px; margin-top: -20px;  margin-bottom: -15px;"></h3>
               <span id="meron-bet-status" class=" fw-bold blinking-text white" style="font-size: 60px; margin-top: -80px"></span>
@@ -479,7 +476,6 @@ function hideFullScreen() {
               <br>
               <br>
               <h4 class="fw-bolder" style="font-size: 80px; margin-top: -20px;">WALA</h4>
-              <h2 class="fw-light" id="wala-entry" style="font-size: 80px; margin-top: -20px;"></h2>
               <h2 class="fw-bolder yellow" id="wala-bet" style="font-size: 100px; margin-top: -20px;"></h2>
               <h3 id="wala-odds" style="font-size: 70px; margin-top: -20px; margin-bottom: -15px;"></h3>
               <span id="wala-bet-status" class=" fw-bold blinking-text white" style="font-size: 60px; margin-top: -80px"></span>

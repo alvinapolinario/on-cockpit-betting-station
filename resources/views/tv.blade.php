@@ -405,8 +405,6 @@ function renderCurrentMatch(match) {
     $('#meron-bet').text(formatCurrency(match.meron_total_bet));
     $('#wala-bet').text(formatCurrency(match.wala_total_bet));
 
-    $('#wala-entry').text(match.wala_entry);
-    $('#meron-entry').text(match.meron_entry);
 
     $('#meron-odds').text(match.meron_odds);
     $('#wala-odds').text(match.wala_odds);
@@ -612,7 +610,6 @@ function hideFullScreen() {
   <section class="tv-lanes">
     <article class="tv-lane bg-red" id="card_meron">
       <p class="tv-side">MERON</p>
-      <p class="tv-entry" id="meron-entry"></p>
       <p class="tv-amount" id="meron-bet">0</p>
       <p class="tv-odds" id="meron-odds">0.00</p>
       <span id="meron-bet-status" class="tv-disabled blinking-text white"></span>
@@ -624,7 +621,6 @@ function hideFullScreen() {
 
     <article class="tv-lane bg-blue" id="card_wala">
       <p class="tv-side">WALA</p>
-      <p class="tv-entry" id="wala-entry"></p>
       <p class="tv-amount" id="wala-bet">0</p>
       <p class="tv-odds" id="wala-odds">0.00</p>
       <span id="wala-bet-status" class="tv-disabled blinking-text white"></span>

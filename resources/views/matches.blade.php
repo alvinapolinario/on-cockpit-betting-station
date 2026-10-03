@@ -816,7 +816,8 @@ $configData = Helper::appClasses();
     $.ajax({
         url: `/matches/get-started`,
         type: "GET",
-        success: function () {
+        success: function (response) {
+            if (response && response.message) toastr.info(response.message);
           if ($("#main").hasClass("hidden")) {
             $("#main").removeClass("hidden");
             $("#get-started, #get-started-wrap").addClass("hidden");

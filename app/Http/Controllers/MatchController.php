@@ -83,7 +83,8 @@ class MatchController extends Controller
         ->where('event_id', $event->event_id)
         ->first();
 
-        if(empty($match))
+        // With the matching link on, the first fight comes from matching's Call (no placeholder).
+        if(empty($match) && !MatchingBridge::enabled())
         {
           $this->newStaticMatch();
           $match = Fight::orderBy('match_id', 'desc')
@@ -91,6 +92,11 @@ class MatchController extends Controller
           ->first();
         }
 
+        if (empty($match)) {
+          // Matching link on and nothing called yet: the board waits for matching's Call.
+          $this->createLog(session()->get('account_id'), "Web App", "Matches - Clicked the Get Started button (waiting for a fight from matching).");
+          return response()->json(['message' => 'Waiting for the matching operator to call the first fight.']);
+        }
 
         broadcast(new MatchUpdated($match));
 
@@ -160,8 +166,8 @@ class MatchController extends Controller
 
   public function newMatch()
   {
-    if (MatchingBridge::eventLinked(Event::where('event_status', 'Active')->first())) {
-      return 0; // fights of this event are called from the matching system
+    if (MatchingBridge::enabled()) {
+      return 0; // fights are called from the matching system
     }
     DB::beginTransaction();
 
@@ -582,8 +588,8 @@ class MatchController extends Controller
     }
 
 
-    // Fights of a linked event are called from matching: never create the next one here.
-    if (MatchingBridge::eventLinked(Event::where('event_id', $target->event_id)->first())) {
+    // With the matching link on, fights are called from matching: never create the next one here.
+    if (MatchingBridge::enabled()) {
       $r->merge(['dont_create' => 1]);
     }
 
