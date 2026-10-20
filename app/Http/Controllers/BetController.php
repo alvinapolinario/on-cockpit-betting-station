@@ -148,7 +148,8 @@ class BetController extends Controller
         return $fail('Your account is not activated! Please contact administrator!');
       }
 
-      if ($match->match_number != $r->match_id) {
+      // The apps send the fight's match_id; older clients send its match_number.
+      if ($match->match_id != $r->match_id && $match->match_number != $r->match_id) {
         return $fail('Fight is already lapsed or not existing');
       }
 

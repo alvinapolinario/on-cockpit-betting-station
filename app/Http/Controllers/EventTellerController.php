@@ -62,7 +62,9 @@ class EventTellerController extends Controller
       'match' => $latestMatch ? [
           'match_id' => $latestMatch->match_id,
           'match_number' => $latestMatch->match_number,
-          'match_bet_status' => $latestMatch->match_bet_status
+          'match_bet_status' => $latestMatch->match_bet_status,
+          'meron_bet_status' => (int) $latestMatch->meron_bet_status,
+          'wala_bet_status' => (int) $latestMatch->wala_bet_status
       ] : null
   ], 200);
 

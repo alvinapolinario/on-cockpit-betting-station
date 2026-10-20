@@ -36,6 +36,12 @@ class Fight extends Model
         'bet_opened_at',
         'hold_reason',
     ];
+    // Toggling sets these with "!" (a PHP bool). Casting keeps them 0/1 in the
+    // MatchUpdated broadcast, which the teller app reads as numbers.
+    protected $casts = [
+        'meron_bet_status' => 'integer',
+        'wala_bet_status' => 'integer',
+    ];
     public function sealedEventId(): ?int
     {
         return $this->event_id === null ? null : (int) $this->event_id;

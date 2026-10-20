@@ -5,6 +5,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/tmp/composer
 
+# This host's network has broken IPv6 for anything beyond small requests (connects,
+# then stalls/resets on real transfers) — prefer IPv4 so composer/npm/curl don't hang.
+RUN echo "precedence ::ffff:0:0/96  100" >> /etc/gai.conf
+
 # This network blocks plain-HTTP access to deb.debian.org; fetch packages over HTTPS.
 RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
     && apt-get update \

@@ -160,7 +160,9 @@ class MatchController extends Controller
         'success' => true,
         'match_id' => $match->match_id,
         'match_number' => $match->match_number,
-        'match_bet_status' => $match->match_bet_status
+        'match_bet_status' => $match->match_bet_status,
+        'meron_bet_status' => (int) $match->meron_bet_status,
+        'wala_bet_status' => (int) $match->wala_bet_status
     ]);
 }
 

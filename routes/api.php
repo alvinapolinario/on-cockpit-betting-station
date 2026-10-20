@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 | API Routes (mobile teller app, admin app, desktop app)
 |--------------------------------------------------------------------------
 |
-| Every route except the two logins requires "Authorization: Bearer <token>".
+| Every route except the logins requires "Authorization: Bearer <token>".
 | account.token:teller / account.token:admin restrict a route to that role,
 | and the caller's identity is taken from the token (see CheckAccountToken).
 |
@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 // Logins: limited to 10 attempts per minute per IP address.
 Route::middleware('throttle:10,1')->group(function () {
   Route::post('/login-app', 'AccountController@loginApp');
+  Route::post('/login-qr', 'AccountController@loginAppQr');
   Route::post('/login-app-admin', 'AccountController@loginAppAdmin');
 });
 

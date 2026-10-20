@@ -44,6 +44,8 @@ Route::middleware(['isAdmin'])->group(function () {
       Route::post('/update', 'TellerController@update');
       Route::post('/find/{teller_id}', 'TellerController@find');
       Route::post('/{teller_id}/clear-phone-uid', 'TellerController@clearPhoneUID');
+      Route::post('/{teller_id}/login-qr', 'TellerController@loginQr');
+      Route::post('/{teller_id}/login-qr/regenerate', 'TellerController@regenerateLoginQr');
       Route::delete('/{teller_id}', 'TellerController@delete');
     });
 

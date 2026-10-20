@@ -31,6 +31,7 @@ $configData = Helper::appClasses();
 <script src="{{asset('assets/vendor/libs/jquery.validate/additional-methods.min.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/qrcode/qrcode.min.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -89,6 +90,7 @@ $configData = Helper::appClasses();
 
          buttons +=  `
 
+                    <button class="btn btn-sm btn-primary" onclick="showLoginQr(${row.teller_id})">QR Login</button>
                     <button class="btn btn-sm btn-secondary" onclick="editEntry(${row.teller_id})">Edit</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteEntry(${row.teller_id})">Delete</button>
                 `;
@@ -341,6 +343,86 @@ $configData = Helper::appClasses();
     });
   }
 
+  // Teller login QR: scanned by the teller app to log in and link the phone.
+  function renderLoginQr(data) {
+    $('#qr_teller_name').text(data.teller_name);
+    $('#qr_username').text(data.username);
+    $('#qr_generated_at').text(data.qr_generated_at);
+    $('#qr_teller_id').val(data.teller_id);
+    $('#qr_canvas').empty();
+    new QRCode(document.getElementById('qr_canvas'), {
+      text: data.qr_code,
+      width: 240,
+      height: 240,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  function loginQrRequest(url, onSuccess) {
+    $.ajax({
+      type: "POST",
+      dataType: 'json',
+      url: url,
+      headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+      },
+      success: onSuccess,
+      error: function() {
+        toastr.error('Something went wrong!');
+      }
+    });
+  }
+
+  function showLoginQr(id) {
+    loginQrRequest("/accounts/tellers/" + id + "/login-qr", function(response) {
+      renderLoginQr(response);
+      showBootstrapModal('#loginQrModal');
+    });
+  }
+
+  function regenerateLoginQr() {
+    var id = $('#qr_teller_id').val();
+    Swal.fire({
+      title: 'Regenerate QR code?',
+      text: "The current QR code will stop working. Print and give the new one to the teller.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, regenerate',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        confirmButton: 'btn btn-danger me-3',
+        cancelButton: 'btn btn-label-secondary'
+      },
+      buttonsStyling: false
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        loginQrRequest("/accounts/tellers/" + id + "/login-qr/regenerate", function(response) {
+          renderLoginQr(response);
+          toastr.success('New QR code generated!');
+        });
+      }
+    });
+  }
+
+  function printLoginQr() {
+    var canvas = document.querySelector('#qr_canvas canvas');
+    var image = canvas ? canvas.toDataURL('image/png') : $('#qr_canvas img').attr('src');
+    var name = $('<div>').text($('#qr_teller_name').text()).html();
+    var username = $('<div>').text($('#qr_username').text()).html();
+    var win = window.open('', '_blank', 'width=420,height=560');
+    win.document.write(
+      '<html><head><title>Teller Login QR</title></head>' +
+      '<body style="font-family:sans-serif;text-align:center;padding:24px">' +
+      '<h2 style="margin:0 0 4px">' + name + '</h2>' +
+      '<div style="color:#666;margin-bottom:16px">' + username + '</div>' +
+      '<img src="' + image + '" style="width:260px;height:260px">' +
+      '<p style="font-size:12px;color:#666">Scan with the teller app to log in.<br>Keep this QR private.</p>' +
+      '</body></html>'
+    );
+    win.document.close();
+    win.onload = function() { win.focus(); win.print(); };
+  }
+
   function init() {
     initializeSelect2ForAllModals();
   }
@@ -483,6 +565,31 @@ $configData = Helper::appClasses();
           <button type="submit" class="btn btn-success">Save Changes</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="loginQrModal" tabindex="-1" aria-labelledby="loginQrModal" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Teller Login QR</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <h5 class="mb-0" id="qr_teller_name"></h5>
+        <div class="text-muted mb-3" id="qr_username"></div>
+        <div id="qr_canvas" class="d-inline-block p-2 bg-white border rounded"></div>
+        <p class="small text-muted mt-3 mb-0">
+          Scan with the teller app to log in. The first scan links the phone.<br>
+          Generated: <span id="qr_generated_at"></span>
+        </p>
+        <input type="hidden" id="qr_teller_id">
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-danger" onclick="regenerateLoginQr()">Regenerate</button>
+        <button type="button" class="btn btn-primary" onclick="printLoginQr()">Print</button>
+      </div>
     </div>
   </div>
 </div>

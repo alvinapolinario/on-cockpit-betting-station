@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Teller;
 use App\Models\Account;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class TellerController extends Controller
@@ -129,6 +131,53 @@ class TellerController extends Controller
 
 
 
+
+  // Returns the teller's login QR content, creating it on first use.
+  public function loginQr(Request $r)
+  {
+    $teller = Teller::where('teller_id', $r->teller_id)->firstOrFail();
+
+    if (empty($teller->qr_token)) {
+      $this->issueLoginQr($teller);
+      $this->createLog(session()->get('account_id'), "Web App", "Teller - Login QR created for Teller #{$teller->teller_id} ({$teller->teller_name})");
+    }
+
+    return $this->loginQrResponse($teller);
+  }
+
+  // Replaces the teller's login QR; the old QR stops working immediately.
+  public function regenerateLoginQr(Request $r)
+  {
+    $teller = Teller::where('teller_id', $r->teller_id)->firstOrFail();
+
+    $this->issueLoginQr($teller);
+    $this->createLog(session()->get('account_id'), "Web App", "Teller - Login QR regenerated for Teller #{$teller->teller_id} ({$teller->teller_name})");
+
+    return $this->loginQrResponse($teller);
+  }
+
+  private function issueLoginQr(Teller $teller)
+  {
+    $code = 'SBQR1:' . Str::random(48);
+
+    $teller->qr_token_hash = hash('sha256', $code);
+    $teller->qr_token = Crypt::encryptString($code);
+    $teller->qr_generated_at = date('Y-m-d H:i:s');
+    $teller->save();
+  }
+
+  private function loginQrResponse(Teller $teller)
+  {
+    $username = Account::where('account_id', $teller->account_id)->value('username');
+
+    return response()->json([
+      'teller_id' => $teller->teller_id,
+      'teller_name' => $teller->teller_name,
+      'username' => $username,
+      'qr_code' => Crypt::decryptString($teller->qr_token),
+      'qr_generated_at' => $teller->qr_generated_at,
+    ]);
+  }
 
   public function delete(Request $r)
   {
