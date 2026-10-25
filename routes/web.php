@@ -178,6 +178,11 @@ Route::middleware(['isAdmin'])->group(function () {
     Route::post('/{event_closing_id}/acknowledge', 'ClosingReportController@acknowledge')->whereNumber('event_closing_id')->name('closing-reports.acknowledge');
   });
 
+  Route::prefix('settings')->group(function () {
+    Route::get('/', 'AppSettingController@index')->name('settings');
+    Route::post('/', 'AppSettingController@update')->name('settings.update');
+  });
+
   Route::prefix('backups')->group(function () {
     Route::get('/', 'BackupController@index')->name('backups');
     Route::post('/', 'BackupController@store')->name('backups.store');

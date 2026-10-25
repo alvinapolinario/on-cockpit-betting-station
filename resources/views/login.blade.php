@@ -1,5 +1,7 @@
 @php
 $customizerHidden = 'customizer-hide';
+$appName = config('variables.templateName');
+$appMark = mb_strtoupper(mb_substr($appName, 0, 1));
 @endphp
 
 @extends('layouts.layoutMaster')
@@ -7,13 +9,11 @@ $customizerHidden = 'customizer-hide';
 @section('title', 'Login')
 
 @section('vendor-style')
-<!-- Vendor -->
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/toastr/toastr.css')}}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
 @section('page-style')
-<!-- Page -->
-<link rel="stylesheet" href="{{asset('assets/vendor/css/pages/page-auth.css')}}">
+<link rel="stylesheet" href="{{ asset('assets/css/login-screen.css') }}?v=3">
 @endsection
 
 @section('vendor-script')
@@ -25,14 +25,19 @@ $customizerHidden = 'customizer-hide';
 @section('page-script')
 <script>
   $(document).ready(function () {
-      // Populate the username field if saved in localStorage
       const rememberedUsername = localStorage.getItem('rememberedUsername');
       if (rememberedUsername) {
           $('#username').val(rememberedUsername);
           $('#remember-me').prop('checked', true);
       }
 
-      // Validate and handle form submission
+      $('#togglePassword').on('click', function () {
+          const input = $('#password');
+          const hidden = input.attr('type') === 'password';
+          input.attr('type', hidden ? 'text' : 'password');
+          $(this).find('i').toggleClass('bx-hide', !hidden).toggleClass('bx-show', hidden);
+      });
+
       $('#loginForm').validate({
           onfocusout: false,
           rules: {
@@ -42,26 +47,24 @@ $customizerHidden = 'customizer-hide';
               },
               password: {
                   required: true,
-                  nowhitespace: true,
               },
           },
           submitHandler: function (form) {
+              const button = $('#btnSignIn');
               const formData = new FormData(form);
 
               $.ajax({
                   type: "POST",
                   url: "/login",
-                  async: false,
                   data: formData,
                   cache: false,
                   contentType: false,
                   processData: false,
                   beforeSend: function () {
-                      toastr.info('Logging in! Please wait!');
+                      button.prop('disabled', true).text('Signing in…');
                   },
                   success: function (data) {
                       if (data > 0) {
-                          // Save username if "Remember Me" is checked
                           if ($('#remember-me').is(':checked')) {
                               localStorage.setItem('rememberedUsername', $('#username').val());
                           } else {
@@ -69,72 +72,75 @@ $customizerHidden = 'customizer-hide';
                           }
                           location.reload();
                       } else {
-                          toastr.error('Login Failed!');
+                          button.prop('disabled', false).text('Sign in');
+                          toastr.error('Login failed. Check your username and password.');
                       }
                   },
                   error: function () {
-                      toastr.error('Something went wrong!');
+                      button.prop('disabled', false).text('Sign in');
+                      toastr.error('Something went wrong. Please try again.');
                   }
               });
           },
           messages: {},
       });
   });
-  </script>
-
+</script>
 @endsection
 
 @section('content')
-<div class="container-xxl">
-  <div class="authentication-wrapper authentication-basic container-p-y">
-    <div class="authentication-inner py-4">
-
-      <!-- Register -->
-      <div class="card">
-        <div class="card-body">
-          <!-- Logo -->
-          <div class="app-brand justify-content-center">
-            <a href="{{url('/')}}" class="app-brand-link gap-2">
-              <img src="{{ asset('assets/img/logo-full.png') }}" height="100px">
-              <br>
-              {{-- <span class="app-brand-text demo h3 mb-0 fw-bold">{{config('variables.templateName')}}</span> --}}
-            </a>
-          </div>
-          <!-- /Logo -->
-          <div class="text-center">
-            <h4 class="mb-2">Welcome to {{config('variables.templateName')}}! 👋</h4>
-            <p class="mb-4">Please sign-in to your account</p>
-          </div>
-
-          <form id="loginForm" name="loginForm" class="mb-3">
-            @csrf
-            <div class="mb-3">
-              <label class="form-label">Username</label>
-              <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" autofocus>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" autofocus>
-            </div>
-            <div class="mb-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="remember-me">
-                <label class="form-check-label" for="remember-me">
-                  Remember Me
-                </label>
-              </div>
-            </div>
-            <div class="mb-3">
-              <button class="btn btn-primary d-grid w-100" type="submit">Sign in</button>
-            </div>
-          </form>
-
-
-
-        </div>
+<div class="login-screen">
+  <aside class="login-brand">
+    <div class="login-brand-top">
+      <span class="login-mark">{{ $appMark }}</span>
+      <div class="login-brand-text">
+        <p class="login-kicker">Admin console</p>
+        <h1>{{ $appName }}</h1>
+        <p class="login-brand-desc">Sign in to manage fights, tellers, claims, and live betting.</p>
       </div>
-      <!-- /Register -->
     </div>
-  </div>
+    <ul class="login-points">
+      <li><i class="bx bx-broadcast"></i> Live match control</li>
+      <li><i class="bx bx-receipt"></i> Teller and claim tools</li>
+      <li><i class="bx bx-qr-scan"></i> App setup from Settings</li>
+    </ul>
+    <div class="login-brand-foot">© {{ date('Y') }} {{ $appName }}</div>
+  </aside>
+
+  <main class="login-form-wrap">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <p class="login-lead">Use your administrator account to continue.</p>
+
+      <form id="loginForm" name="loginForm" autocomplete="on">
+        @csrf
+        <div class="login-field">
+          <label for="username">Username</label>
+          <div class="login-input">
+            <i class="bx bx-user login-input-icon"></i>
+            <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" autocomplete="username" autofocus>
+          </div>
+        </div>
+        <div class="login-field">
+          <label for="password">Password</label>
+          <div class="login-input">
+            <i class="bx bx-lock-alt login-input-icon"></i>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" autocomplete="current-password">
+            <button type="button" class="login-toggle" id="togglePassword" aria-label="Show password">
+              <i class="bx bx-hide"></i>
+            </button>
+          </div>
+        </div>
+        <div class="login-row">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="remember-me">
+            <label class="form-check-label" for="remember-me">Remember username</label>
+          </div>
+        </div>
+        <button class="btn login-submit d-grid w-100" id="btnSignIn" type="submit">Sign in</button>
+      </form>
+      <div class="login-card-foot">Authorized staff only</div>
+    </div>
+  </main>
 </div>
 @endsection

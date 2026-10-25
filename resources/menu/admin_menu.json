@@ -130,6 +130,12 @@
       "menuHeader": "System"
     },
     {
+      "url": "/settings",
+      "name": "App Settings",
+      "icon": "bx bx-cog",
+      "slug": "settings"
+    },
+    {
       "url": "/backups",
       "name": "Backups",
       "icon": "bx bx-data",

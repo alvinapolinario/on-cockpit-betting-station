@@ -1,10 +1,10 @@
 <?php
 // Variables
 return [
-  'creatorName' => 'RMR',
+  'creatorName' => 'OCBS',
   'creatorUrl' => '#',
-  // Cockpit arena name shown in the app (tab title, menu, login page, closing reports).
-  'templateName' => env('ARENA_NAME', 'Blueknife Gallera'),
+  // Overridden at runtime by App Settings (app_name).
+  'templateName' => env('ARENA_NAME', 'OCBS'),
   'templateSuffix' => 'Cockfight Information System',
   'templateVersion' => '1.0.0',
   'templateFree' => false,

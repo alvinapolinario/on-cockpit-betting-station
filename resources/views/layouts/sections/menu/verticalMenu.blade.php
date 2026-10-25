@@ -40,7 +40,7 @@ foreach (($menuData[0]->menu ?? []) as $menu) {
     <div class="side-shell">
       <div class="side-head">
         <a class="side-logo" href="{{ url('/') }}">
-          <span class="side-mark">S</span>
+          <span class="side-mark">{{ mb_substr(config('variables.templateName'), 0, 1) }}</span>
           <span class="side-brand">
             <strong>{{ config('variables.templateName') }}</strong>
             <small>Admin</small>
