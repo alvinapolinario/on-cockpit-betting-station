@@ -19,8 +19,9 @@ class AppSettingController extends Controller
   public function update(Request $request)
   {
     $data = $request->validate([
-      'api_url' => 'required|string|max:180',
-      'app_name' => 'required|string|max:40',
+      // "|" separates the fields in the setup QR, so neither value may contain it.
+      'api_url' => 'required|string|max:180|not_regex:/\|/',
+      'app_name' => 'required|string|max:40|not_regex:/\|/',
     ]);
 
     $settings = AppSetting::put($data['api_url'], $data['app_name']);

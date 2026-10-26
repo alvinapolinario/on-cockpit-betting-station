@@ -51,7 +51,8 @@ class AppSetting
   }
 
   /**
-   * The signed setup QR text, or null when this server has no setup QR key yet.
+   * The signed setup QR text, or null when this server has no setup QR key yet:
+   * "SBAPI2:{url}|{name}|{signature}". Kept short (no JSON) so the QR stays easy to scan.
    * The signature covers "SBAPI2\n{url}\n{name}"; the app checks it with the public key
    * built into it, so a QR naming another server cannot be printed without the key.
    */
@@ -64,11 +65,7 @@ class AppSetting
     $settings = self::get();
     $url = (string) $settings['api_url'];
     $name = (string) $settings['app_name'];
-    return self::QR_PREFIX . json_encode([
-      'url' => $url,
-      'name' => $name,
-      'sig' => $keys->signSetupQr("SBAPI2\n{$url}\n{$name}"),
-    ], JSON_UNESCAPED_SLASHES);
+    return self::QR_PREFIX . $url . '|' . $name . '|' . $keys->signSetupQr("SBAPI2\n{$url}\n{$name}");
   }
 
   public static function defaultApiUrl(): string

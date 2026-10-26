@@ -32,11 +32,13 @@ $configData = Helper::appClasses();
     if (!payload) {
       return;
     }
+    // Large, with low error correction: the signed text is long, and bigger squares are what
+    // phone cameras (especially fixed-focus handhelds) need to read it from a screen or paper.
     new QRCode(box, {
       text: payload,
-      width: 240,
-      height: 240,
-      correctLevel: QRCode.CorrectLevel.M
+      width: 320,
+      height: 320,
+      correctLevel: QRCode.CorrectLevel.L
     });
   }
 
@@ -55,7 +57,7 @@ $configData = Helper::appClasses();
       '<body style="font-family:sans-serif;text-align:center;padding:24px">' +
       '<h2 style="margin:0 0 4px">' + name.replace(/</g, '') + '</h2>' +
       '<div style="color:#666;margin-bottom:16px">' + url.replace(/</g, '') + '</div>' +
-      '<img src="' + image + '" style="width:260px;height:260px">' +
+      '<img src="' + image + '" style="width:320px;height:320px">' +
       '<p style="font-size:12px;color:#666">Scan with the teller app Server button<br>to set the API URL and app name.</p>' +
       '</body></html>'
     );
