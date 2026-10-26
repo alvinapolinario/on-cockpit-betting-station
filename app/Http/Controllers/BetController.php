@@ -355,6 +355,11 @@ class BetController extends Controller
     }
 
 
+    // One reprint per receipt for tellers, recorded in bet_reprints.
+    if ($previous = $this->recordTellerReprint($bet, (int) $r->event_teller_id)) {
+      return $this->alreadyReprinted($previous);
+    }
+
     $teller = DB::table('event_tellers_view')
     ->where('event_teller_id', $r->event_teller_id)
     ->first();
@@ -366,6 +371,40 @@ class BetController extends Controller
       'success' => true,
       'message' => 'Bet reprinted successfully!',
       'bet' => $bet
+    ]);
+  }
+
+  /**
+   * Records a teller reprint of this receipt, or returns the earlier reprint when there is
+   * one (a teller may reprint a receipt only once). The bet row is locked so two taps at
+   * the same moment cannot both pass the check.
+   */
+  private function recordTellerReprint($bet, int $eventTellerId)
+  {
+    return DB::transaction(function () use ($bet, $eventTellerId) {
+      Bet::where('bet_id', $bet->bet_id)->lockForUpdate()->first();
+      $previous = DB::table('bet_reprints')->where('bet_id', $bet->bet_id)->orderBy('bet_reprint_id')->first();
+      if ($previous) {
+        return $previous;
+      }
+      DB::table('bet_reprints')->insert([
+        'bet_id' => $bet->bet_id,
+        'bet_receipt_code' => $bet->bet_receipt_code,
+        'reprinted_via' => 'teller',
+        'event_teller_id' => $eventTellerId,
+        'reprinted_at' => date('Y-m-d H:i:s'),
+      ]);
+      return null;
+    });
+  }
+
+  private function alreadyReprinted($previous)
+  {
+    $when = date('M j, Y h:i A', strtotime($previous->reprinted_at));
+    return response()->json([
+      'success' => false,
+      'already_reprinted' => true,
+      'message' => "This receipt was already reprinted once ({$when}). It cannot be reprinted again."
     ]);
   }
 
@@ -425,6 +464,11 @@ class BetController extends Controller
     }
 
 
+    // One reprint per receipt for tellers, recorded in bet_reprints.
+    if ($previous = $this->recordTellerReprint($bet, (int) $r->event_teller_id)) {
+      return $this->alreadyReprinted($previous);
+    }
+
     $teller = DB::table('event_tellers_view')
     ->where('event_teller_id', $r->event_teller_id)
     ->first();
@@ -480,6 +524,16 @@ class BetController extends Controller
       ]);
     }
 
+    // Admin reprints are recorded (and count as the receipt's reprint in the teller app)
+    // but not limited: an admin can still reprint a receipt a teller already reprinted.
+    DB::table('bet_reprints')->insert([
+      'bet_id' => $bet->bet_id,
+      'bet_receipt_code' => $bet->bet_receipt_code,
+      'reprinted_via' => 'admin',
+      'admin_id' => $r->admin_id,
+      'reprinted_at' => date('Y-m-d H:i:s'),
+    ]);
+
     $admin = Admin::where('admin_id', $r->admin_id)->first();
 
     $this->createLog($admin->account_id, "Admin App", "Reprint receipt by Admin. " . json_encode($bet));
@@ -506,6 +560,7 @@ class BetController extends Controller
           return response()->json([]);
       }
       $bets = DB::table('bets_view')
+          ->select('bets_view.*', DB::raw('(select count(*) from bet_reprints r where r.bet_id = bets_view.bet_id) as reprint_count'))
           ->where('event_teller_id', $tellerId)
           ->where('event_status', 'Active')
           ->where('match_id', $latestMatchId)
