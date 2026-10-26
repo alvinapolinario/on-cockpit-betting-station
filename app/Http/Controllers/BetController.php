@@ -296,6 +296,13 @@ class BetController extends Controller
     if (!$bet) {
       return null;
     }
+    // Voided since it was saved (from Bet History): never hand it back as a live ticket.
+    if ($bet->bet_status == 2) {
+      return response()->json([
+        'success' => false,
+        'message' => 'This bet was saved and then voided. No ticket was printed.'
+      ]);
+    }
 
     $match = Fight::where('match_id', $bet->match_id)->first();
     $event = $match ? Event::where('event_id', $match->event_id)->first() : null;

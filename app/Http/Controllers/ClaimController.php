@@ -40,6 +40,9 @@ class ClaimController extends Controller
       }
 
       $fight = Fight::where('match_id', $bet->match_id)->first();
+      if (!$fight) {
+        return $refuse('The fight for this receipt was not found. Please contact the administrator.');
+      }
       if ($bet->bet_payout_amount <= 0) {
         $result = $fight ? ($fight->match_winner ? $fight->match_winner . ' won' : $fight->match_status) : 'unknown';
         return $refuse('This ticket has no payout. Fight #' . ($fight->match_number ?? '?') . ' result: ' . $result . '.');
