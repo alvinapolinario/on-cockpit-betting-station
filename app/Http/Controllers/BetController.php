@@ -346,6 +346,14 @@ class BetController extends Controller
       ]);
     }
 
+    // Same rule as reprint-teller: no reprints once the fight has a result.
+    if (!Fight::where('match_id', $bet->match_id)->where('match_status', 'Ongoing')->exists()) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Cannot reprint the receipt because the fight has already finished.'
+      ]);
+    }
+
 
     $teller = DB::table('event_tellers_view')
     ->where('event_teller_id', $r->event_teller_id)
@@ -406,14 +414,15 @@ class BetController extends Controller
     ->where('match_status', 'Ongoing')
     ->first();
 
-
-    // if(empty($match))
-    // {
-    //   return response()->json([
-    //       'success' => false,
-    //       'message' => 'Cannot reprint the receipt because fight is already finish!'
-    //   ], 200);
-    // }
+    // Reprints only while the fight is ongoing: once it has a result, a reprinted winning
+    // ticket could be scanned and paid without the customer's original.
+    if(empty($match))
+    {
+      return response()->json([
+          'success' => false,
+          'message' => 'Cannot reprint the receipt because the fight has already finished.'
+      ], 200);
+    }
 
 
     $teller = DB::table('event_tellers_view')
