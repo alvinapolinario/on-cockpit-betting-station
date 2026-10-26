@@ -19,9 +19,10 @@ class AppSettingController extends Controller
   public function update(Request $request)
   {
     $data = $request->validate([
-      // "|" separates the fields in the setup QR, so neither value may contain it.
-      'api_url' => 'required|string|max:180|not_regex:/\|/',
-      'app_name' => 'required|string|max:40|not_regex:/\|/',
+      // "|" separates the fields in the setup QR, so neither value may contain it. Array form:
+      // in a "a|b" rule string Laravel would split the regex itself at its "|".
+      'api_url' => ['required', 'string', 'max:180', 'not_regex:/\|/'],
+      'app_name' => ['required', 'string', 'max:40', 'not_regex:/\|/'],
     ]);
 
     $settings = AppSetting::put($data['api_url'], $data['app_name']);
