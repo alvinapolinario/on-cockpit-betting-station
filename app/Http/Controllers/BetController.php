@@ -339,6 +339,13 @@ class BetController extends Controller
       ]);
     }
 
+    if ($bet->bet_status == 2) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Your last receipt was voided and cannot be reprinted.'
+      ]);
+    }
+
 
     $teller = DB::table('event_tellers_view')
     ->where('event_teller_id', $r->event_teller_id)
@@ -375,6 +382,23 @@ class BetController extends Controller
       return response()->json([
         'success' => false,
         'message' => 'No receipt found!'
+      ]);
+    }
+
+    // A teller reprints only their own receipts: a reprint of someone else's winning
+    // ticket could otherwise be scanned and paid out.
+    if ((int) $bet->event_teller_id !== (int) $r->event_teller_id) {
+      return response()->json([
+        'success' => false,
+        'message' => 'You can only reprint receipts you issued.'
+      ]);
+    }
+
+    // A voided ticket is never printed again, so it cannot pass as a live bet.
+    if ($bet->bet_status == 2) {
+      return response()->json([
+        'success' => false,
+        'message' => 'This receipt was voided and cannot be reprinted.'
       ]);
     }
 
@@ -447,10 +471,19 @@ class BetController extends Controller
   public function betHistory(Request $request)
   {
 
+      // Only the latest fight this teller has receipts on; earlier fights stay hidden.
       $tellerId = $request->event_teller_id;
+      $latestMatchId = DB::table('bets_view')
+          ->where('event_teller_id', $tellerId)
+          ->where('event_status', 'Active')
+          ->max('match_id');
+      if ($latestMatchId === null) {
+          return response()->json([]);
+      }
       $bets = DB::table('bets_view')
           ->where('event_teller_id', $tellerId)
           ->where('event_status', 'Active')
+          ->where('match_id', $latestMatchId)
           ->orderBy('bet_datetime', 'desc')
           ->get();
 
