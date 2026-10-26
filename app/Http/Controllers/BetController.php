@@ -464,6 +464,22 @@ class BetController extends Controller
       ]);
     }
 
+    // Same rules as the teller reprint: a voided ticket is never printed again, and no
+    // reprints once the fight has a result (a reprinted winning ticket could be scanned
+    // and paid without the customer's original).
+    if ($bet->bet_status == 2) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Reprint failed: This receipt was voided and cannot be reprinted.',
+      ]);
+    }
+    if (!Fight::where('match_id', $bet->match_id)->where('match_status', 'Ongoing')->exists()) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Reprint failed: The fight has already finished.',
+      ]);
+    }
+
     $admin = Admin::where('admin_id', $r->admin_id)->first();
 
     $this->createLog($admin->account_id, "Admin App", "Reprint receipt by Admin. " . json_encode($bet));
