@@ -22,6 +22,15 @@ class CashOutController extends Controller
     if (!is_numeric($r->amount) || $r->amount <= 0 || $r->amount > config('betting.max_cash_movement')) {
       return response()->json(['success' => false, 'message' => 'Enter an amount between 1 and ' . number_format(config('betting.max_cash_movement')) . '.'], 422);
     }
+    $requestId = $r->client_request_id ?: null;
+    if ($requestId !== null && !preg_match('/^[A-Za-z0-9-]{1,64}$/', $requestId)) {
+      return response()->json(['success' => false, 'message' => 'Invalid request id.'], 422);
+    }
+    // A resent request (the app never got our answer) is reported as already submitted,
+    // before the balance check, which the first copy already passed.
+    if ($requestId !== null && ($replay = $this->replayCashOut((int) $r->event_teller_id, $requestId))) {
+      return $replay;
+    }
 
     DB::beginTransaction();
     try {
@@ -34,16 +43,17 @@ class CashOutController extends Controller
 
       if($event->event_status <> 'Active')
       {
-
+        DB::rollBack();
         return response()->json([
             'success' => false,
-            'message' => 'Cash-in request failed, event is no longer Active.'
+            'message' => 'Cash-out request failed, event is no longer Active.'
         ], 200);
       }
 
 
         if($r->amount > $event_teller->teller_balance)
         {
+          DB::rollBack();
           return response()->json([
               'success' => false,
               'message' => "Not enough cash on hand."
@@ -56,6 +66,7 @@ class CashOutController extends Controller
             'cash_out_amount' => $r->amount,
             'cash_out_datetime' => date('Y-m-d H:i:s'),
             'cash_out_status' => 'Pending',
+            'client_request_id' => $requestId,
         ]);
 
         $teller = Teller::where('teller_id', $event_teller->teller_id)->first();
@@ -114,6 +125,11 @@ class CashOutController extends Controller
 
         DB::rollBack();
 
+        // Two copies of one request arrived together; the unique index stopped the second.
+        if ($requestId !== null && $e instanceof \Illuminate\Database\QueryException
+            && ($replay = $this->replayCashOut((int) $r->event_teller_id, $requestId))) {
+          return $replay;
+        }
 
         return response()->json([
             'success' => false,
@@ -122,6 +138,20 @@ class CashOutController extends Controller
         ], 500);
     }
 }
+
+  // The answer for a cash-out request already saved under this teller's request id, or null.
+  private function replayCashOut(int $eventTellerId, string $requestId)
+  {
+    $exists = CashOut::where('event_teller_id', $eventTellerId)->where('client_request_id', $requestId)->exists();
+    if (!$exists) {
+      return null;
+    }
+    return response()->json([
+        'success' => true,
+        'duplicate' => true,
+        'message' => 'Cash-out request already submitted.'
+    ], 200);
+  }
 
 public function storeByAdminViaApp(Request $r)
 {

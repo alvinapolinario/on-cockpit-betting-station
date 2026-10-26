@@ -93,6 +93,14 @@ class CashInController extends Controller
     if (!is_numeric($r->amount) || $r->amount <= 0 || $r->amount > config('betting.max_cash_movement')) {
       return response()->json(['success' => false, 'message' => 'Enter an amount between 1 and ' . number_format(config('betting.max_cash_movement')) . '.'], 422);
     }
+    $requestId = $r->client_request_id ?: null;
+    if ($requestId !== null && !preg_match('/^[A-Za-z0-9-]{1,64}$/', $requestId)) {
+      return response()->json(['success' => false, 'message' => 'Invalid request id.'], 422);
+    }
+    // A resent request (the app never got our answer) is reported as already submitted.
+    if ($requestId !== null && ($replay = $this->replayCashIn((int) $r->event_teller_id, $requestId))) {
+      return $replay;
+    }
 
     DB::beginTransaction();
     try {
@@ -103,7 +111,7 @@ class CashInController extends Controller
 
       if($event->event_status <> 'Active')
       {
-
+        DB::rollBack();
         return response()->json([
             'success' => false,
             'message' => 'Cash-in request failed, event is no longer Active.'
@@ -118,6 +126,7 @@ class CashInController extends Controller
             'cash_in_datetime' => date('Y-m-d H:i:s'),
             'cash_in_type' => 'TellerCashIn',
             'cash_in_status' => 'Pending',
+            'client_request_id' => $requestId,
         ]);
 
 
@@ -175,6 +184,11 @@ class CashInController extends Controller
 
         DB::rollBack();
 
+        // Two copies of one request arrived together; the unique index stopped the second.
+        if ($requestId !== null && $e instanceof \Illuminate\Database\QueryException
+            && ($replay = $this->replayCashIn((int) $r->event_teller_id, $requestId))) {
+          return $replay;
+        }
 
         return response()->json([
             'success' => false,
@@ -183,6 +197,20 @@ class CashInController extends Controller
         ], 500);
     }
 }
+
+  // The answer for a cash-in request already saved under this teller's request id, or null.
+  private function replayCashIn(int $eventTellerId, string $requestId)
+  {
+    $exists = CashIn::where('event_teller_id', $eventTellerId)->where('client_request_id', $requestId)->exists();
+    if (!$exists) {
+      return null;
+    }
+    return response()->json([
+        'success' => true,
+        'duplicate' => true,
+        'message' => 'Cash-in request already submitted.'
+    ], 200);
+  }
 
 public function storeByAdminViaApp(Request $r)
 {

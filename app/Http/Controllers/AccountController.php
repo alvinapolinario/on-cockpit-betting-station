@@ -20,8 +20,23 @@ use Laravel\Sanctum\PersonalAccessToken;
 class AccountController extends Controller
 {
 
+  // Refuses logins from a teller app older than APP_MIN_VERSION (versionCode in X-App-Version).
+  private function rejectOutdatedApp(Request $request)
+  {
+    $min = (int) config('betting.min_app_version');
+    $version = (int) $request->header('X-App-Version', 0);
+    if ($min > 0 && $version < $min) {
+      $this->createLog(-1, "Teller App", "Login refused: app version {$version} is older than {$min}, device UID: {$request->phone_uid}");
+      return response()->json(['message' => 'This teller app is out of date. Please install the latest version before logging in.'], 401);
+    }
+    return null;
+  }
+
   public function loginApp(Request $request)
   {
+    if ($outdated = $this->rejectOutdatedApp($request)) {
+      return $outdated;
+    }
 
     $event = Event::where('event_status', 'Active')->first();
 
@@ -31,14 +46,14 @@ class AccountController extends Controller
 
     if(empty($acc))
     {
-      $this->createLog(-1, "Teller App", "Login attempt by Username: " . $request->userame);
+      $this->createLog(-1, "Teller App", "Login attempt by Username: " . $request->username);
       return response()->json(['message' => 'Invalid credentials! Please contact administrator'], 401);
     }
     else
     {
       if($acc->is_active == 0)
       {
-        $this->createLog(-1, "Teller App", "Login attempt by Username: " . $request->userame);
+        $this->createLog(-1, "Teller App", "Login attempt by Username: " . $request->username);
         return response()->json(['message' => 'Login Failed! Account is not activated, please contact administrator!'], 401);
       }
     }
@@ -50,7 +65,7 @@ class AccountController extends Controller
 
     if(empty($account))
     {
-      $this->createLog(-1, "Teller App", "Login attempt by Username: " . $request->userame);
+      $this->createLog(-1, "Teller App", "Login attempt by Username: " . $request->username);
 
       return response()->json(['message' => 'Invalid credentials! Please contact administrator'], 401);
     }
@@ -121,6 +136,9 @@ class AccountController extends Controller
    */
   public function loginAppQr(Request $request)
   {
+    if ($outdated = $this->rejectOutdatedApp($request)) {
+      return $outdated;
+    }
     $request->validate([
       'qr_code' => 'required|string|max:200',
       'phone_uid' => 'required|string|max:100',
@@ -217,6 +235,11 @@ class AccountController extends Controller
 
     return response()->json([
       'token' => $token,
+      // Bet limits the app checks before sending (the server checks them again).
+      'limits' => [
+        'min_bet' => (float) config('betting.min_bet'),
+        'max_bet' => (float) config('betting.max_bet'),
+      ],
       'teller' => [
         'phone_uid' => $account->phone_uid,
         'event_teller_id' => $account->event_teller_id,
@@ -252,7 +275,7 @@ class AccountController extends Controller
 
     if(empty($account))
     {
-      $this->createLog(-1, "Admin App", "Login attempt by Username: " . $request->userame);
+      $this->createLog(-1, "Admin App", "Login attempt by Username: " . $request->username);
 
       return response()->json(['message' => 'Invalid credentials! Please contact administrator'], 401);
     }
@@ -411,12 +434,27 @@ class AccountController extends Controller
     DB::beginTransaction();
     try {
 
-        $teller = Teller::where('teller_id', $request->teller_id)->firstOrFail();
+        // Locked so two phones activating the same teller at once cannot both be bound.
+        $teller = Teller::where('teller_id', $request->teller_id)->lockForUpdate()->firstOrFail();
         $account = Account::where('account_id', $teller->account_id)->firstOrFail();
 
+        // The phone is bound only on first activation, never moved: moving a teller to another
+        // phone is an admin action (clear the phone in the web app, then log in on the new one).
+        $device = (string) $request->header('X-Device-Id', '');
+        if (empty($teller->phone_uid)) {
+          if ($device === '' || $device !== (string) $request->phone_uid) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'This phone could not be identified. Please log in again.'], 422);
+          }
+          $linked = Teller::where('phone_uid', $device)->where('teller_id', '<>', $teller->teller_id)->first();
+          if (!empty($linked)) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'This phone is already linked to ' . $linked->teller_name], 422);
+          }
+          $teller->phone_uid = $device;
+        }
 
         $account->password = Hash::make($request->new_password);
-        $teller->phone_uid = $request->phone_uid;
 
         $teller->save();
         $account->save();

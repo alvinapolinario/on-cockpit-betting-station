@@ -16,6 +16,7 @@ class Bet extends Model
       'event_teller_id',
       'match_id',
       'bet_receipt_code',
+      'client_request_id',
       'bet_side',
       'bet_amount',
       'bet_win_amount',

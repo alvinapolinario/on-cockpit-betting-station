@@ -15,6 +15,56 @@ use App\Events\TellerBalanceUpdated;
 
 class ClaimController extends Controller
 {
+    /**
+     * What paying this ticket would mean, without paying it: the teller confirms the side,
+     * fight, result and exact payout first. Refuses the same tickets claim-winning refuses.
+     */
+    public function claimPreview(Request $r)
+    {
+      if (!is_scalar($r->receipt_code) || trim((string) $r->receipt_code) === '') {
+        return response()->json(['success' => false, 'message' => 'Receipt code is required.'], 422);
+      }
+      $refuse = fn (string $message) => response()->json(['success' => false, 'message' => $message], 200);
+
+      $bet = Bet::where('bet_receipt_code', (string) $r->receipt_code)->first();
+      if (empty($bet)) {
+        return $refuse('Receipt not found. Please check the receipt code.');
+      }
+      if ($bet->bet_status == 2) {
+        return $refuse('Payout cannot be processed for this receipt because it has been voided.');
+      }
+
+      $claimed = DB::table('claims_view')->where('bet_id', $bet->bet_id)->first();
+      if (!empty($claimed)) {
+        return $refuse('This receipt was already claimed by ' . $claimed->teller_name . ' on ' . date('F j, Y h:i a', strtotime($claimed->claim_datetime)));
+      }
+
+      $fight = Fight::where('match_id', $bet->match_id)->first();
+      if ($bet->bet_payout_amount <= 0) {
+        $result = $fight ? ($fight->match_winner ? $fight->match_winner . ' won' : $fight->match_status) : 'unknown';
+        return $refuse('This ticket has no payout. Fight #' . ($fight->match_number ?? '?') . ' result: ' . $result . '.');
+      }
+
+      $isRefund = $fight && in_array($fight->match_status, ['Draw', 'Cancelled'], true);
+      $odds = $isRefund ? 1 : (float) ($bet->bet_side === 'Meron' ? $fight->meron_odds : $fight->wala_odds);
+
+      return response()->json([
+        'success' => true,
+        'preview' => [
+          'receipt_code' => $bet->bet_receipt_code,
+          'side' => $bet->bet_side,
+          'stake' => (float) $bet->bet_amount,
+          'match_number' => $fight ? (int) $fight->match_number : null,
+          'result' => $isRefund ? $fight->match_status : $bet->bet_side . ' won',
+          'odds' => $odds,
+          'payout' => (float) $bet->bet_payout_amount,
+          'refund' => $isRefund,
+          // Winning tickets are paid only from a scan of the printed ticket.
+          'needs_scan' => !$isRefund,
+        ],
+      ]);
+    }
+
     public function claimWinning(Request $r)
     {
       $time_now = date('Y-m-d H:i:s');
@@ -46,6 +96,15 @@ class ClaimController extends Controller
         if($bet->bet_payout_amount <= 0)
         {
           return $fail('This receipt cannot be processed for payout. Please contact the administrator for assistance.');
+        }
+
+        // Only Draw and Cancelled refunds may be paid without the physical ticket (from the
+        // unclaimed list or a typed code). A winning ticket must be scanned, so a teller
+        // cannot pay out a winner the customer never brought back.
+        $fightStatus = DB::table('matches')->where('match_id', $bet->match_id)->value('match_status');
+        $isRefund = in_array($fightStatus, ['Draw', 'Cancelled'], true);
+        if (!$isRefund && $r->claim_method !== 'scan') {
+          return $fail('Winning tickets are paid only by scanning the printed ticket.');
         }
 
         $event_teller = DB::table('event_tellers_view')->where('event_teller_id', $bet->event_teller_id)->first();
@@ -132,7 +191,8 @@ class ClaimController extends Controller
           ->first();
 
           $teller = Teller::where('teller_id', $event_teller->teller_id)->first();
-          $this->createLog($teller->account_id, "Teller App", "Bet payout claimed. " . json_encode($bet) . " " .  json_encode($teller));
+          $method = $r->claim_method === 'scan' ? 'scanned ticket' : 'without ticket';
+          $this->createLog($teller->account_id, "Teller App", "Bet payout claimed ({$method}). " . json_encode($bet) . " " .  json_encode($teller));
 
           $claim->teller_name = $teller->teller_name;
           $event = Event::where('event_id', $match->event_id)->first();

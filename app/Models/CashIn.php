@@ -19,6 +19,7 @@ class CashIn extends Model
       'cash_in_datetime',
       'cash_in_type',
       'cash_in_status',
+      'client_request_id',
   ];
     public function sealedEventId(): ?int
     {

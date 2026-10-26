@@ -133,6 +133,55 @@ class KeyStore
     return base64_decode(trim(file_get_contents($this->path('backup.key'))), true);
   }
 
+  /*
+   * Teller-app setup QR key (ECDSA P-256; the Android app cannot verify Ed25519 below API 33).
+   *   {key_path}/setup-qr.key  PEM private key (chmod 600, never leaves the server)
+   *   {key_path}/setup-qr.pub  base64 DER public key, built into the teller app
+   * Every server whose QRs the same APK must accept needs this same key pair.
+   */
+  public function hasSetupQrKey(): bool
+  {
+    return is_file($this->path('setup-qr.key'));
+  }
+
+  public function generateSetupQrKey(bool $force = false): string
+  {
+    if ($this->hasSetupQrKey() && !$force) {
+      throw new RuntimeException('A setup QR key already exists. Replacing it makes every teller app built with the old public key reject new setup QRs. Use --force only if that is intended.');
+    }
+    $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
+    if ($key === false || !openssl_pkey_export($key, $pem)) {
+      throw new RuntimeException('Could not create the setup QR key: ' . openssl_error_string());
+    }
+    $public = self::pemBody(openssl_pkey_get_details($key)['key']);
+    $this->writeSecret('setup-qr.key', trim($pem));
+    $this->writePublic('setup-qr.pub', $public);
+    return $public;
+  }
+
+  public function setupQrPublic(): string
+  {
+    return trim(file_get_contents($this->path('setup-qr.pub')));
+  }
+
+  /** Base64 DER ECDSA (SHA-256) signature of $message with the setup QR key. */
+  public function signSetupQr(string $message): string
+  {
+    if (!$this->hasSetupQrKey()) {
+      throw new RuntimeException('No setup QR key on this server. Run: php artisan setup-qr:keygen');
+    }
+    $key = openssl_pkey_get_private(file_get_contents($this->path('setup-qr.key')));
+    if ($key === false || !openssl_sign($message, $signature, $key, OPENSSL_ALGO_SHA256)) {
+      throw new RuntimeException('Could not sign the setup QR: ' . openssl_error_string());
+    }
+    return base64_encode($signature);
+  }
+
+  private static function pemBody(string $pem): string
+  {
+    return preg_replace('/-----[A-Z ]+-----|\s+/', '', $pem);
+  }
+
   public static function fingerprint(string $publicKey): string
   {
     return substr(hash('sha256', $publicKey), 0, 16);

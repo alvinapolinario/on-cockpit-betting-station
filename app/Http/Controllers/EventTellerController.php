@@ -46,6 +46,10 @@ class EventTellerController extends Controller
 
     $res = response()->json([
       'token' => '',
+      'limits' => [
+        'min_bet' => (float) config('betting.min_bet'),
+        'max_bet' => (float) config('betting.max_bet'),
+      ],
       'teller' => [
           'phone_uid' => $account->phone_uid,
           'event_teller_id' => $account->event_teller_id,

@@ -32,7 +32,8 @@ Route::middleware('throttle:240,1')->prefix('bridge/matching')->group(function (
 // Teller app / desktop app
 Route::middleware('account.token:teller')->group(function () {
   Route::post('/change-password', 'AccountController@changePasswordApp');
-  Route::post('/register-desktop-uid', 'AccountController@registerDesktopUID');
+  // register-desktop-uid removed: it let any teller token re-bind the account to any device,
+  // and the desktop app is not used. Devices are bound only by first login on the phone.
   Route::post('/create-bet', 'BetController@store');
   Route::post('/teller-data', 'EventTellerController@getData');
   Route::post('/reprint-last-receipt', 'BetController@reprint');
@@ -44,6 +45,8 @@ Route::middleware('account.token:teller')->group(function () {
   Route::post('/cash-in/history', 'CashInController@cashInHistory');
   Route::post('/cash-out', 'CashOutController@storeByTeller');
   Route::post('/cash-out/history', 'CashOutController@cashOutHistory');
+  Route::post('/claim-preview', 'ClaimController@claimPreview');
+  Route::post('/app-crash-report', 'AppReportController@crash');
   Route::post('/claim-winning', 'ClaimController@claimWinning');
   Route::post('/claim-winning-reprint', 'ClaimController@claimWinningReprint');
   Route::post('/claimed-receipts', 'ClaimController@cashOutHistory');

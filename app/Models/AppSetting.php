@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\Closing\KeyStore;
+
 class AppSetting
 {
-  public const QR_PREFIX = 'SBAPI1:';
+  // SBAPI2 QRs are signed; the teller app rejects unsigned SBAPI1 QRs, which anyone could print.
+  public const QR_PREFIX = 'SBAPI2:';
 
   public static function defaults(): array
   {
@@ -47,12 +50,24 @@ class AppSetting
     return $name !== '' ? $name : 'OCBS';
   }
 
-  public static function qrPayload(): string
+  /**
+   * The signed setup QR text, or null when this server has no setup QR key yet.
+   * The signature covers "SBAPI2\n{url}\n{name}"; the app checks it with the public key
+   * built into it, so a QR naming another server cannot be printed without the key.
+   */
+  public static function qrPayload(): ?string
   {
+    $keys = app(KeyStore::class);
+    if (!$keys->hasSetupQrKey()) {
+      return null;
+    }
     $settings = self::get();
+    $url = (string) $settings['api_url'];
+    $name = (string) $settings['app_name'];
     return self::QR_PREFIX . json_encode([
-      'url' => $settings['api_url'],
-      'name' => $settings['app_name'],
+      'url' => $url,
+      'name' => $name,
+      'sig' => $keys->signSetupQr("SBAPI2\n{$url}\n{$name}"),
     ], JSON_UNESCAPED_SLASHES);
   }
 

@@ -106,11 +106,23 @@ class BetController extends Controller
       'side' => 'required|in:Meron,Wala',
       'amount' => 'required|numeric|min:' . config('betting.min_bet') . '|max:' . config('betting.max_bet'),
       'match_id' => 'required|integer',
+      'client_request_id' => 'nullable|string|max:64|regex:/^[A-Za-z0-9-]+$/',
+      'match_number' => 'nullable|integer',
     ]);
     if ($v->fails()) {
       return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
     }
     $amount = round((float) $r->amount, 2);
+    $requestId = $r->client_request_id ?: null;
+
+    // A resent request (the app never got our answer) gets the bet already saved,
+    // even if the fight has closed since. Checked before any fight or side rule.
+    if ($requestId !== null) {
+      $replay = $this->replayBet((int) $r->event_teller_id, $requestId);
+      if ($replay) {
+        return $replay;
+      }
+    }
     $fail = function (string $message) {
       DB::rollBack();
       return response()->json(['success' => false, 'message' => $message]);
@@ -148,8 +160,15 @@ class BetController extends Controller
         return $fail('Your account is not activated! Please contact administrator!');
       }
 
-      // The apps send the fight's match_id; older clients send its match_number.
-      if ($match->match_id != $r->match_id && $match->match_number != $r->match_id) {
+      // Clients that send a request id must name the open fight by its exact match_id,
+      // plus the fight number they showed the customer, so a bet can never land on a
+      // fight the teller did not see. Older clients may still send the match_number.
+      if ($requestId !== null) {
+        $shownNumber = (int) $r->match_number;
+        if ($match->match_id != $r->match_id || ($shownNumber > 0 && $match->match_number != $shownNumber)) {
+          return $fail("Fight #{$match->match_number} is now open. Check the fight and place the bet again.");
+        }
+      } elseif ($match->match_id != $r->match_id && $match->match_number != $r->match_id) {
         return $fail('Fight is already lapsed or not existing');
       }
 
@@ -171,6 +190,7 @@ class BetController extends Controller
         'event_teller_id' => $teller->event_teller_id,
         'match_id'        => $match->match_id,
         'bet_receipt_code'=> $betReceiptCode,
+        'client_request_id' => $requestId,
         'bet_side'        => $r->side,
         'bet_amount'      => $amount,
         'bet_win_amount'  => 0,
@@ -250,12 +270,47 @@ class BetController extends Controller
     } catch (\Exception $e) {
 
       DB::rollBack();
+      // Two copies of one request arrived together: the unique index stopped the
+      // second insert, so answer it with the bet the first one saved.
+      if ($requestId !== null && $e instanceof \Illuminate\Database\QueryException) {
+        $replay = $this->replayBet((int) $r->event_teller_id, $requestId);
+        if ($replay) {
+          return $replay;
+        }
+      }
       Log::error('create-bet failed', ['exception' => $e]);
       return response()->json([
         'success' => false,
         'message' => 'Bet was not saved. Please try again.',
       ], 500);
     }
+  }
+
+  // The success response for a bet already saved under this teller's request id,
+  // in the same shape as a new bet, or null when there is none.
+  private function replayBet(int $eventTellerId, string $requestId)
+  {
+    $bet = Bet::where('event_teller_id', $eventTellerId)
+      ->where('client_request_id', $requestId)
+      ->first();
+    if (!$bet) {
+      return null;
+    }
+
+    $match = Fight::where('match_id', $bet->match_id)->first();
+    $event = $match ? Event::where('event_id', $match->event_id)->first() : null;
+    $tel = DB::table('event_tellers_view')->where('event_teller_id', $eventTellerId)->first();
+
+    $bet->match_number = $match->match_number ?? null;
+    $bet->event_name = $event->event_name ?? null;
+    $bet->teller_name = $tel->teller_name ?? null;
+
+    return response()->json([
+      'success' => true,
+      'duplicate' => true,
+      'message' => 'Bet already saved.',
+      'bet' => $bet
+    ]);
   }
 
 

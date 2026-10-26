@@ -44,10 +44,23 @@ class CheckAccountToken
         ->join('tellers', 'tellers.teller_id', '=', 'event_tellers.teller_id')
         ->join('accounts', 'accounts.account_id', '=', 'tellers.account_id')
         ->where('event_tellers.event_teller_id', $pat->tokenable_id)
-        ->select('event_tellers.event_teller_id', 'event_tellers.teller_id', 'events.event_status', 'accounts.is_active', 'accounts.account_id')
+        ->select('event_tellers.event_teller_id', 'event_tellers.teller_id', 'events.event_status', 'accounts.is_active', 'accounts.account_id', 'tellers.phone_uid')
         ->first();
       if (!$owner || $owner->event_status !== 'Active' || !$owner->is_active) {
         return response()->json(['success' => false, 'message' => 'Session is no longer valid for this event. Please log in again.'], 401);
+      }
+      // A teller token only works from the teller's bound phone (the app sends its device id
+      // as X-Device-Id), so it stops working the moment an admin clears or moves the binding.
+      // A teller with no bound phone yet may only change the password, which binds it.
+      $device = (string) $request->header('X-Device-Id', '');
+      if (empty($owner->phone_uid)) {
+        if (!$request->is('api/change-password')) {
+          $this->logDenied($request, $pat, "teller with no bound phone used the API from device '{$device}'");
+          return response()->json(['success' => false, 'message' => 'This phone is not activated yet. Please log in again to activate it.'], 401);
+        }
+      } elseif ($device === '' || !hash_equals((string) $owner->phone_uid, $device)) {
+        $this->logDenied($request, $pat, "teller token used from device '{$device}', bound phone is '{$owner->phone_uid}'");
+        return response()->json(['success' => false, 'message' => 'This session belongs to another phone. Please log in again.'], 401);
       }
       foreach (['event_teller_id' => $owner->event_teller_id, 'teller_id' => $owner->teller_id] as $field => $value) {
         if ($request->filled($field) && (int) $request->input($field) !== (int) $value) {

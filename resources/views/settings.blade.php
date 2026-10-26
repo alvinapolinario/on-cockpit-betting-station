@@ -13,16 +13,17 @@ $configData = Helper::appClasses();
 
 @section('page-script')
 <script>
+  // The QR is signed on the server, so it only changes after Save; editing the fields
+  // hides it until then instead of showing a QR the teller app would reject.
   document.addEventListener('DOMContentLoaded', function () {
     renderSetupQr(@json($qrPayload));
-    document.getElementById('api_url').addEventListener('input', previewQr);
-    document.getElementById('app_name').addEventListener('input', previewQr);
+    document.getElementById('api_url').addEventListener('input', markUnsaved);
+    document.getElementById('app_name').addEventListener('input', markUnsaved);
   });
 
-  function previewQr() {
-    var url = document.getElementById('api_url').value.trim();
-    var name = document.getElementById('app_name').value.trim() || 'OCBS';
-    renderSetupQr('SBAPI1:' + JSON.stringify({ url: url, name: name }));
+  function markUnsaved() {
+    document.getElementById('setup_qr').innerHTML = '';
+    document.getElementById('setup_qr_unsaved').classList.remove('d-none');
   }
 
   function renderSetupQr(payload) {
@@ -41,7 +42,11 @@ $configData = Helper::appClasses();
 
   function printSetupQr() {
     var canvas = document.querySelector('#setup_qr canvas');
-    var image = canvas ? canvas.toDataURL('image/png') : document.querySelector('#setup_qr img').src;
+    var img = document.querySelector('#setup_qr img');
+    if (!canvas && !img) {
+      return; // no signed QR to print (unsaved changes, or no key yet)
+    }
+    var image = canvas ? canvas.toDataURL('image/png') : img.src;
     var name = document.getElementById('app_name').value.trim() || 'OCBS';
     var url = document.getElementById('api_url').value.trim();
     var win = window.open('', '_blank', 'width=420,height=580');
@@ -105,6 +110,10 @@ $configData = Helper::appClasses();
           <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printSetupQr()">Print</button>
         </div>
         <div class="card-body text-center">
+          @if (!$qrPayload)
+            <div class="alert alert-warning text-start">No setup QR key on this server yet. Run <code>php artisan setup-qr:keygen</code>, or copy <code>setup-qr.key</code> and <code>setup-qr.pub</code> from the server whose public key is built into the teller app.</div>
+          @endif
+          <div id="setup_qr_unsaved" class="alert alert-info d-none">Save to generate the QR for these values.</div>
           <div id="setup_qr" class="d-inline-block"></div>
           <div class="mt-3">
             <div class="fw-bold">{{ $settings['app_name'] }}</div>

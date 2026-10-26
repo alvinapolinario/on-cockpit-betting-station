@@ -18,6 +18,7 @@ class CashOut extends Model
       'cash_out_amount',
       'cash_out_datetime',
       'cash_out_status',
+      'client_request_id',
   ];
     public function sealedEventId(): ?int
     {
