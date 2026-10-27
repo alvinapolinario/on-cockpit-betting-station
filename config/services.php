@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Shared key for the print service (its LARAVEL_PRINT_KEY). Empty disables /api/print-service.
+    'print_service' => [
+        'key' => env('PRINT_SERVICE_KEY', ''),
+    ],
+
 ];

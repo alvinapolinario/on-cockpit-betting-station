@@ -55,6 +55,17 @@ Route::middleware('account.token:teller')->group(function () {
   Route::post('/voided-bets', 'BetController@voidedBets');
 });
 
+// Print service (FastAPI on this server): shared key in the X-Print-Key header
+Route::middleware('print.key')->prefix('print-service')->group(function () {
+  Route::get('/events', 'PrintApiController@events');
+  Route::get('/tellers', 'PrintApiController@tellers');
+  Route::get('/history/{eventTellerId}', 'PrintApiController@history');
+  Route::get('/event-totals', 'PrintApiController@eventTotals');
+  Route::get('/cash-transactions', 'PrintApiController@cashTransactions');
+  Route::get('/cash-transactions/{eventTellerId}', 'PrintApiController@tellerCashSummary');
+  Route::get('/analytics/event/{eventId}', 'PrintApiController@analyticsEvent');
+});
+
 // Admin app
 Route::middleware('account.token:admin')->group(function () {
   Route::post('/cash-in-admin', 'CashInController@storeByAdminViaApp');

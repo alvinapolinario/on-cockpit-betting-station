@@ -71,6 +71,7 @@ class Kernel extends HttpKernel
     'isAll' => \App\Http\Middleware\AllMiddleware::class,
     'account.token' => \App\Http\Middleware\CheckAccountToken::class,
     'unclaimed.password' => \App\Http\Middleware\UnclaimedPasswordCheck::class,
+    'print.key' => \App\Http\Middleware\PrintServiceKey::class,
 
   ];
 }

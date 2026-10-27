@@ -10,6 +10,9 @@ Route::get('/tv-new', 'PageController@tvNew');
 Route::get('/tv/get-started', 'MatchController@getStarted');
 Route::get('/tv/fight-history', 'MatchController@fightHistory');
 
+// nginx auth_request target for /print/* (must answer 200/401, never a redirect)
+Route::get('/internal/admin-session', 'AdminSessionController@check')->name('internal.admin-session');
+
 
 Route::middleware(['isLoggedIn'])->group(function () {
   Route::get('/', 'PageController@login')->name('login');
