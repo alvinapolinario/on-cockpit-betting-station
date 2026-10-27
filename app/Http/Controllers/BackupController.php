@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Services\Backup\DatabaseBackup;
+use App\Services\Backup\DataReset;
 use App\Services\Closing\KeyStore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,13 +12,16 @@ use Illuminate\Support\Facades\Hash;
 
 class BackupController extends Controller
 {
-  public function __construct(private DatabaseBackup $backups, private KeyStore $keys) {}
+  public function __construct(private DatabaseBackup $backups, private KeyStore $keys, private DataReset $reset) {}
 
   public function index()
   {
     $this->createLog(session()->get('account_id'), "Web App", "Opened the Backups page");
 
     return view('backups.index', [
+      'resetEnabled' => $this->reset->enabled(),
+      'resetBlockers' => $this->reset->unsealedEvents(),
+      'resetCounts' => $this->reset->counts(),
       'backups' => $this->keys->hasSigningKey() ? $this->backups->list() : [],
       'journal' => array_slice($this->backups->journalEntries(), 0, 20),
       'hasBackupKey' => $this->keys->hasBackupKey(),
@@ -102,6 +106,43 @@ class BackupController extends Controller
 
     return redirect()->route('backups')->with('success',
       "Database restored from {$res['file']} ({$res['rows']} rows, {$res['seconds']}s). The previous state was saved as {$res['prerestore_backup']}.");
+  }
+
+  /**
+   * Clear the betting data of sealed events (passcode + typed RESET). A backup is taken
+   * first; it is listed on this page and can be restored.
+   */
+  public function reset(Request $r)
+  {
+    $accountId = (int) session()->get('account_id');
+    $r->validate([
+      'passcode' => 'required|string',
+      'confirmation' => 'required|in:RESET',
+    ], [
+      'confirmation.in' => 'Type RESET to confirm.',
+    ]);
+
+    if (!$this->reset->enabled()) {
+      return back()->with('error', 'Reset is disabled: set RESET_PASSCODE in .env first.');
+    }
+    if (!$this->reset->passcodeMatches($r->passcode)) {
+      $this->createLog($accountId, "Web App", "Data reset REJECTED: wrong passcode");
+      return back()->with('error', 'Wrong reset passcode.');
+    }
+
+    try {
+      $res = $this->reset->run($accountId);
+    } catch (\Throwable $e) {
+      $this->createLog($accountId, "Web App", "Data reset FAILED: " . $e->getMessage());
+      return back()->with('error', $e->getMessage());
+    }
+
+    // Logged after the reset: the transactions log is one of the cleared tables.
+    $removed = array_sum($res['counts']);
+    $this->createLog($accountId, "Web App", "Betting data reset: {$removed} rows cleared; backup {$res['backup']['file']}");
+
+    return redirect()->route('backups')->with('success',
+      "Betting data cleared ({$removed} rows). The previous state was saved as {$res['backup']['file']}; restore it from the list below if needed. Teller apps must sign in again.");
   }
 
   /**
