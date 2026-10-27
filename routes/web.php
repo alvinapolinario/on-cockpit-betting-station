@@ -194,6 +194,8 @@ Route::middleware(['isAdmin'])->group(function () {
     Route::post('/import/{file}/check', 'BackupController@checkImport')->where('file', '[A-Za-z0-9_.-]+\\.sql(\\.gz)?')->name('backups.import.check');
     Route::post('/import/{file}/restore', 'BackupController@restoreImport')->where('file', '[A-Za-z0-9_.-]+\\.sql(\\.gz)?')->name('backups.import.restore');
     Route::post('/{file}/restore', 'BackupController@restore')->where('file', '[A-Za-z0-9_.-]+\\.bak\\.enc')->name('backups.restore');
+    // Clear betting data of sealed events (passcode from RESET_PASSCODE; backup taken first)
+    Route::post('/reset', 'BackupController@reset')->middleware('throttle:5,10')->name('backups.reset');
   });
 
   // Reset page removed: it wiped event data (and its "backup" never worked). Use System → Backups instead.

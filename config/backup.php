@@ -28,4 +28,8 @@ return [
   // were not created by this app. Always refused when APP_ENV=production.
   // Files are placed in {path}/import/ (not uploaded through the browser).
   'allow_raw_sql_import' => (bool) env('BACKUP_ALLOW_RAW_SQL_IMPORT', false),
+
+  // Passcode for "Reset betting data" on the Backups page: plain text (6+ characters)
+  // or a bcrypt hash ($2y$...). Empty disables the reset.
+  'reset_passcode' => env('RESET_PASSCODE', ''),
 ];

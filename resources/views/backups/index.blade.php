@@ -224,6 +224,54 @@ $configData = Helper::appClasses();
   </div>
   @endif
 
+  <div class="card mb-4 border border-danger">
+    <div class="card-header bg-label-danger">
+      <strong>Reset betting data</strong>
+      <small class="d-block">Start the next event on empty tables. Only allowed when every event with fights or tellers is sealed.</small>
+    </div>
+    <div class="card-body">
+      <p class="mb-2">
+        Clears fights, bets, payouts, cash-ins/outs, event tellers, the teller ledger, reprints, remittances, shorts, salaries,
+        app logins and the activity log ({{ number_format(array_sum($resetCounts)) }} rows now), and unbinds teller phones.
+        Events, sealed closings (BIR packages can still be downloaded), tellers, accounts and settings are kept.
+        A backup is taken first and appears in the list above, so the reset can be undone with Restore.
+      </p>
+
+      @if (!$resetEnabled)
+        <div class="alert alert-warning mb-0">
+          Reset is disabled. Set <code>RESET_PASSCODE</code> in <code>.env</code> (at least 6 characters, or a bcrypt hash), then run
+          <code>php artisan config:clear</code>.
+        </div>
+      @elseif ($resetBlockers)
+        <div class="alert alert-warning mb-0">
+          Not available: these events are not sealed yet:
+          @foreach ($resetBlockers as $e)
+            <strong>#{{ $e->event_id }} {{ $e->event_name }}</strong> ({{ $e->event_status }}){{ $loop->last ? '.' : ',' }}
+          @endforeach
+          Seal them under Records &rarr; Closing Reports first. A new event must be reset before tellers are assigned to it.
+        </div>
+      @elseif (!($hasBackupKey && $hasSigningKey))
+        <div class="alert alert-warning mb-0">Not available until backups work (a backup is taken before every reset).</div>
+      @else
+        <form method="POST" action="{{ route('backups.reset') }}" class="row g-2 align-items-end"
+              onsubmit="return confirm('Clear all betting data now? A backup is taken first.');">
+          @csrf
+          <div class="col-md-4">
+            <label class="form-label">Reset passcode</label>
+            <input type="password" name="passcode" class="form-control" required autocomplete="off">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Type RESET to confirm</label>
+            <input name="confirmation" class="form-control" required autocomplete="off">
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-danger w-100">Back up and reset</button>
+          </div>
+        </form>
+      @endif
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-header"><strong>Restore journal</strong> <small class="text-muted">kept outside the database, so it survives restores</small></div>
     <div class="card-body">

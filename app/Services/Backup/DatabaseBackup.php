@@ -32,7 +32,7 @@ class DatabaseBackup
 
   public function create(string $type = 'manual', ?int $accountId = null): array
   {
-    if (!in_array($type, ['manual', 'scheduled', 'prerestore', 'preclose'], true)) {
+    if (!in_array($type, ['manual', 'scheduled', 'prerestore', 'preclose', 'prereset'], true)) {
       throw new \InvalidArgumentException("Unknown backup type {$type}");
     }
     @set_time_limit(0);
