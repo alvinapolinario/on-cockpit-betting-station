@@ -165,6 +165,69 @@ $configData = Helper::appClasses();
   .events-btn.is-tellers { background: var(--accent); color: #fff; }
   .events-btn.is-edit { background: var(--surface); color: var(--text); border: 1px solid var(--stroke) !important; }
   .events-btn.is-delete { background: #B91C1C; color: #fff; }
+  .events-app a.events-btn.is-view { display: inline-flex; align-items: center; background: var(--navy-mid); color: #fff; }
+
+  .events-badge.is-closed { background: #E0E7FF; color: #3730A3; }
+
+  .events-seal {
+    align-self: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .events-done {
+    border-top: 1px solid var(--stroke);
+  }
+
+  .events-done-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 22px;
+    border: 0;
+    background: var(--surface);
+    color: var(--text);
+    text-align: left;
+  }
+
+  .events-done-title {
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .events-done-count {
+    display: inline-block;
+    min-width: 28px;
+    margin-left: 8px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--stroke);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .events-done-hint {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .events-chevron {
+    color: var(--muted);
+    font-size: 16px;
+    transition: transform 0.2s ease;
+  }
+
+  .events-done-toggle:not(.collapsed) .events-chevron {
+    transform: rotate(180deg);
+  }
 
   .events-app .modal-content {
     border: 0;
@@ -250,17 +313,42 @@ $configData = Helper::appClasses();
 
   init();
 
-  var table = $('#table').DataTable({
-    "stateSave": true,
-    "ajax": {
+  // Completed and sealed (Closed) events are listed in their own collapsible group.
+  function isFinishedEvent(e) {
+    return e.event_status === 'Completed' || e.event_status === 'Closed';
+  }
+
+  function eventsAjax(filter) {
+    return {
       "url": "/events/list",
       "type": "POST",
-      "dataSrc": "",
+      "dataSrc": function(json) { return json.filter(filter); },
       "headers": {
         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
       },
-    },
-    "columns": [
+    };
+  }
+
+  function editActions(row) {
+    return `
+       <div class="events-actions">
+         <button class="btn events-btn is-tellers" onclick="manageTellers(${row.event_id})">Tellers</button>
+         <button class="btn events-btn is-edit" onclick="editEntry(${row.event_id})">Edit</button>
+         <button class="btn events-btn is-delete" onclick="deleteEntry(${row.event_id})">Delete</button>
+       </div>`;
+  }
+
+  // A sealed event is frozen: only its read-only audit can be opened.
+  function sealedActions(row) {
+    return `
+       <div class="events-actions">
+         <a class="btn events-btn is-view" href="/event-audit/${row.event_id}">View</a>
+         <span class="events-seal" title="Seal code">${row.seal_code}</span>
+       </div>`;
+  }
+
+  function eventColumns(actions) {
+    return [
     { "data": "event_id" },
     { "data": "event_name" },
     { "data": "event_description" },
@@ -286,9 +374,11 @@ $configData = Helper::appClasses();
                 badgeClass = "is-active";
             } else if (data === "Completed") {
                 badgeClass = "is-done";
+            } else if (data === "Closed") {
+                badgeClass = "is-closed";
             }
 
-            return `<span class="events-badge ${badgeClass}">${data}</span>`;
+            return `<span class="events-badge ${badgeClass}">${data === "Closed" ? "Closed · sealed" : data}</span>`;
         }
     },
     {
@@ -319,16 +409,37 @@ $configData = Helper::appClasses();
       "data": null,
       "orderable": false,
       "render": function(data, type, row) {
-        return `
-           <div class="events-actions">
-             <button class="btn events-btn is-tellers" onclick="manageTellers(${row.event_id})">Tellers</button>
-             <button class="btn events-btn is-edit" onclick="editEntry(${row.event_id})">Edit</button>
-             <button class="btn events-btn is-delete" onclick="deleteEntry(${row.event_id})">Delete</button>
-           </div>`;
+        return actions(row);
       }
     }
-    ],
+    ];
+  }
+
+  var table = $('#table').DataTable({
+    "stateSave": true,
+    "ajax": eventsAjax(function(e) { return !isFinishedEvent(e); }),
+    "columns": eventColumns(editActions),
   });
+
+  var tableDone = $('#tableDone').DataTable({
+    "stateSave": true,
+    "order": [[3, 'desc']],
+    "ajax": eventsAjax(isFinishedEvent),
+    "columns": eventColumns(function(row) { return row.seal_code ? sealedActions(row) : editActions(row); }),
+  });
+  tableDone.on('xhr', function() {
+    var json = tableDone.ajax.json() || [];
+    $('#eventsDoneCount').text(json.filter(isFinishedEvent).length);
+  });
+  // The group starts collapsed; recalculate column widths once it is opened.
+  $('#eventsDone').on('shown.bs.collapse', function() {
+    tableDone.columns.adjust();
+  });
+
+  function reloadEventTables() {
+    table.ajax.reload(null, false);
+    tableDone.ajax.reload(null, false);
+  }
 
   $('#addEntryForm').validate({
     onfocusout: false,
@@ -392,7 +503,7 @@ $configData = Helper::appClasses();
           {
             toastr.success('Transaction Success!');
             hideBootstrapModal('#addEntryModal');
-            table.ajax.reload(null, false);
+            reloadEventTables();
           }
           else
           {
@@ -472,7 +583,7 @@ $configData = Helper::appClasses();
           {
             toastr.success('Transaction Success!');
             hideBootstrapModal('#editEntryModal');
-            table.ajax.reload(null, false);
+            reloadEventTables();
           }
           else
           {
@@ -508,7 +619,7 @@ $configData = Helper::appClasses();
     success: function (response) {
       toastr.success(response.message);
       hideBootstrapModal('#manageTellersModal');
-      table.ajax.reload(null, false);
+      reloadEventTables();
     },
     error: function (xhr) {
       toastr.error((xhr.responseJSON && xhr.responseJSON.error) || "Failed to update tellers.");
@@ -581,7 +692,7 @@ $configData = Helper::appClasses();
                 } else {
                   toastr.error('The event was not deleted.');
                 }
-                table.ajax.reload(null, false);
+                reloadEventTables();
               },
               error: function(xhr) {
                 toastr.error((xhr.responseJSON && xhr.responseJSON.message) || 'Something went wrong!');
@@ -697,6 +808,40 @@ $configData = Helper::appClasses();
         </thead>
         <tbody></tbody>
       </table>
+    </div>
+  </div>
+
+  <div class="events-done">
+    <button class="events-done-toggle collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#eventsDone" aria-expanded="false" aria-controls="eventsDone">
+      <span>
+        <span class="events-done-title">Completed events</span>
+        <span class="events-done-count" id="eventsDoneCount">0</span>
+        <span class="events-done-hint">Finished and sealed derbies. Sealed events are read-only.</span>
+      </span>
+      <span class="events-chevron" aria-hidden="true">&#9662;</span>
+    </button>
+    <div id="eventsDone" class="collapse">
+      <div class="events-sheet">
+        <div class="table-responsive">
+          <table class="table" id="tableDone" name="tableDone">
+            <thead>
+              <tr>
+                <th style="width: 5%">#</th>
+                <th style="width: 20%">Name</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Initial Revolving Funds</th>
+                <th>Initial Teller Funds</th>
+                <th>Prizes</th>
+                <th>RD</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>

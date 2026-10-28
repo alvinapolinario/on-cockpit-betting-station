@@ -30,7 +30,10 @@ class EventController extends Controller
 
   public function list()
   {
-    return Event::all();
+    // seal_code is set for sealed events (shown in the Completed events group).
+    return Event::leftJoin('event_closings', 'event_closings.event_id', '=', 'events.event_id')
+      ->select('events.*', 'event_closings.seal_code')
+      ->get();
   }
 
   public function store(Request $r)
