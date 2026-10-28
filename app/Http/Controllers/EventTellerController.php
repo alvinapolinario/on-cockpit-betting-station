@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bet;
 use App\Models\Claim;
 use App\Models\Event;
+use App\Models\EventClosing;
 use App\Models\CashIn;
 use App\Models\Teller;
 use App\Models\Account;
@@ -228,6 +229,9 @@ class EventTellerController extends Controller
 
       if (!$event) {
           return response()->json(['error' => 'Event not found'], 404);
+      }
+      if (EventClosing::isSealed((int) $event->event_id)) {
+          return response()->json(['error' => "Event #{$event->event_id} is sealed; its tellers cannot be changed."], 422);
       }
       if (!$adminId) {
           return response()->json(['error' => 'Missing admin id'], 400);
