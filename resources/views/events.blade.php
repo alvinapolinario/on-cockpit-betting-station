@@ -401,7 +401,7 @@ $configData = Helper::appClasses();
         },
         error: function(data)
         {
-          toastr.error('Something went wrong!');
+          toastr.error((data.responseJSON && data.responseJSON.message) || 'Something went wrong!');
         }
       });
     },
@@ -481,7 +481,7 @@ $configData = Helper::appClasses();
         },
         error: function(data)
         {
-          toastr.error('Something went wrong!');
+          toastr.error((data.responseJSON && data.responseJSON.message) || 'Something went wrong!');
         }
       });
     },
@@ -510,8 +510,8 @@ $configData = Helper::appClasses();
       hideBootstrapModal('#manageTellersModal');
       table.ajax.reload(null, false);
     },
-    error: function () {
-      toastr.error("Failed to update tellers.");
+    error: function (xhr) {
+      toastr.error((xhr.responseJSON && xhr.responseJSON.error) || "Failed to update tellers.");
     }
   });
 });
@@ -576,11 +576,15 @@ $configData = Helper::appClasses();
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
               },
               success: function(deleteResponse) {
-                toastr.success('Transaction Success!');
+                if (deleteResponse > 0) {
+                  toastr.success('Transaction Success!');
+                } else {
+                  toastr.error('The event was not deleted.');
+                }
                 table.ajax.reload(null, false);
               },
               error: function(xhr) {
-                toastr.error('Something went wrong!');
+                toastr.error((xhr.responseJSON && xhr.responseJSON.message) || 'Something went wrong!');
               }
             });
           }

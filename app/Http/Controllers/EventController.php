@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\EventClosing;
 use App\Models\Fight;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -120,6 +121,11 @@ class EventController extends Controller
 
   public function update(Request $r)
   {
+    // A sealed event is frozen: its closing report is signed. Editing it (or setting it
+    // Active again) would let bets land in an event whose report can no longer change.
+    if (EventClosing::isSealed((int) $r->uid)) {
+      return response()->json(['message' => "Event #{$r->uid} is sealed, so it cannot be edited or reopened. Create a new event instead."], 422);
+    }
     if (!is_numeric($r->_event_percentage) || $r->_event_percentage < 0 || $r->_event_percentage >= 1) {
       return response()->json(['message' => 'Commission must be a decimal between 0 and 1 (e.g. 0.07 for 7%).'], 422);
     }
@@ -168,6 +174,15 @@ class EventController extends Controller
 
       if (!$event) {
         return 0;
+      }
+      if (EventClosing::isSealed((int) $event->event_id)) {
+        DB::rollBack();
+        return response()->json(['message' => "Event #{$event->event_id} is sealed, so it cannot be deleted."], 422);
+      }
+      if (DB::table('matches')->where('event_id', $event->event_id)->exists()
+        || DB::table('event_tellers')->where('event_id', $event->event_id)->exists()) {
+        DB::rollBack();
+        return response()->json(['message' => "Event #{$event->event_id} has fights or tellers, so it cannot be deleted."], 422);
       }
 
       $event->delete();
