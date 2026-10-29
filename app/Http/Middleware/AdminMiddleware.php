@@ -17,6 +17,8 @@ class AdminMiddleware
   {
     if (session()->get('account_type') == 'Admin') {
       return $next($request);
+    } else if (session()->get('account_type') == 'Operator') {
+      return redirect('/matches');
     } else {
       return redirect('/');
     }

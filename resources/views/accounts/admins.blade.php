@@ -52,6 +52,14 @@ $configData = Helper::appClasses();
     { "data": "username" },
     { "data": "admin_name" },
     {
+      "data": "account_type",
+      "render": function(data, type, row) {
+        return data === 'Operator'
+        ? '<span class="badge bg-label-warning">Operator</span>'
+        : '<span class="badge bg-label-primary">Admin</span>';
+      }
+    },
+    {
       "data": "is_active",
       "render": function(data, type, row) {
         return data
@@ -186,6 +194,10 @@ $configData = Helper::appClasses();
           {
             toastr.warning('Username is already existing!');
           }
+          else if (data == -2)
+          {
+            toastr.warning('You cannot change the role of the account you are logged in with.');
+          }
           else
           {
             toastr.error('Please try again!');
@@ -218,6 +230,7 @@ $configData = Helper::appClasses();
         $('#uid').val(response['admin_id']);
         $('#_username').val(response['username']);
         $('#_admin_name').val(response['admin_name']);
+        $('#_account_type').val(response['account_type'] === 'Operator' ? 'Operator' : 'Admin').trigger('change');
         $('#_is_active').val(response['is_active']).trigger('change');
       },
     });
@@ -318,6 +331,7 @@ $configData = Helper::appClasses();
               <th style="width: 5%">#</th>
               <th style="width: 20%">Username</th>
               <th>Name</th>
+              <th>Role</th>
               <th>Is Active?</th>
               <th>Date Time Created</th>
               <th>Actions</th>
@@ -355,6 +369,13 @@ $configData = Helper::appClasses();
             <label class="form-label">Name</label>
             <input type="text" class="form-control" id="admin_name" name="admin_name">
           </div>
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select class="form-select" id="account_type" name="account_type">
+              <option value="Admin" selected>Admin (all pages)</option>
+              <option value="Operator">Operator (Matches page only)</option>
+            </select>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -387,6 +408,13 @@ $configData = Helper::appClasses();
           <div class="mb-3">
             <label class="form-label">Name</label>
             <input type="text" class="form-control" id="_admin_name" name="_admin_name">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select class="form-select" id="_account_type" name="_account_type">
+              <option value="Admin">Admin (all pages)</option>
+              <option value="Operator">Operator (Matches page only)</option>
+            </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Is Active</label>

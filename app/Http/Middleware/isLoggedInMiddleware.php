@@ -20,6 +20,8 @@ class isLoggedInMiddleware
     } else {
       if (session()->get('account_type') == 'Admin') {
         return redirect('/dashboard');
+      } else if (session()->get('account_type') == 'Operator') {
+        return redirect('/matches');
       } else {
         return redirect('/');
       }

@@ -68,6 +68,7 @@ class Kernel extends HttpKernel
 
     'isLoggedIn' => \App\Http\Middleware\isLoggedInMiddleware::class,
     'isAdmin' => \App\Http\Middleware\AdminMiddleware::class,
+    'isOperator' => \App\Http\Middleware\OperatorMiddleware::class,
     'isAll' => \App\Http\Middleware\AllMiddleware::class,
     'account.token' => \App\Http\Middleware\CheckAccountToken::class,
     'unclaimed.password' => \App\Http\Middleware\UnclaimedPasswordCheck::class,
