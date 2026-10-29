@@ -1,6 +1,13 @@
 @php
 $customizerHidden = 'customizer-hide';
 $configData = Helper::appClasses();
+// Operators get the Matches page full screen: no side menu, navbar or footer.
+$isOperator = session()->get('account_type') === 'Operator';
+if ($isOperator) {
+  $isMenu = false;
+  $isNavbar = false;
+  $isFooter = false;
+}
 @endphp
 
 @extends('layouts.layoutMaster')
@@ -73,6 +80,27 @@ $configData = Helper::appClasses();
     margin: 2px 0 0;
     color: var(--meter);
     font-size: 13px;
+  }
+
+  .matches-board-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .matches-logout {
+    padding: 4px 12px;
+    border: 1px solid rgba(158, 200, 255, 0.45);
+    border-radius: 999px;
+    color: #9EC8FF;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .matches-logout:hover {
+    background: rgba(158, 200, 255, 0.12);
+    color: #fff;
   }
 
   .matches-date {
@@ -1050,9 +1078,14 @@ function formatCurrency(amount) {
         <p class="matches-kicker">Matches</p>
         <p class="matches-event">{{ $event->event_name ?? 'No event loaded' }}</p>
       </div>
-      @if(!empty($event->event_date))
-        <p class="matches-date">{{ \Carbon\Carbon::parse($event->event_date)->format('M j, Y') }}</p>
-      @endif
+      <div class="matches-board-meta">
+        @if(!empty($event->event_date))
+          <p class="matches-date">{{ \Carbon\Carbon::parse($event->event_date)->format('M j, Y') }}</p>
+        @endif
+        @if($isOperator)
+          <a class="matches-logout" href="/logout">Log out</a>
+        @endif
+      </div>
     </div>
 
     <p class="matches-fight-label">Fight</p>

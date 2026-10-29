@@ -87,7 +87,7 @@ class AdminController extends Controller
       $account = Account::create([
         'username' => $r->username,
         'password' => Hash::make($r->password),
-        'account_type' => 'Admin',
+        'account_type' => $r->account_type === 'Operator' ? 'Operator' : 'Admin',
         'is_active' => 1,
         'account_date_created' => date('Y-m-d H:i:s'),
       ]);
@@ -118,6 +118,15 @@ class AdminController extends Controller
       $admin = Admin::where('admin_id', $r->uid)->firstOrFail();
       $account = Account::where('account_id', $admin->account_id)->firstOrFail();
 
+      if (in_array($r->_account_type, ['Admin', 'Operator'], true) && $r->_account_type !== $account->account_type) {
+        // Changing your own role would lock you out of the admin pages mid-session.
+        if ($account->account_id == session()->get('account_id')) {
+          DB::rollBack();
+          return -2;
+        }
+
+        $account->account_type = $r->_account_type;
+      }
 
       if (!empty($r->_password)) {
         $account->password = Hash::make($r->_password);

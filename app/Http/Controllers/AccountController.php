@@ -378,7 +378,7 @@ class AccountController extends Controller
       $r->session()->put('account_type', $account->account_type);
 
 
-      if ($account->account_type == 'Admin') {
+      if (in_array($account->account_type, ['Admin', 'Operator'], true)) {
         $r->session()->put('welcome_name', $account->username);
         $r->session()->put('name', $account->username);
 
@@ -391,7 +391,7 @@ class AccountController extends Controller
 
         return 1;
       } else {
-        $this->createLog(session()->get('account_id'), "Web App", "Login Failed, reason account is not Admin. " .  $this->getDevice($r));
+        $this->createLog(session()->get('account_id'), "Web App", "Login Failed, reason account is not Admin or Operator. " .  $this->getDevice($r));
 
         return 0;
       }

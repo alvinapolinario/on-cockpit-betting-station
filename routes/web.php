@@ -25,6 +25,24 @@ Route::middleware(['isAll'])->group(function () {
 
 });
 
+// Admins and Operators. Operators see only the Matches page (no menu) and these actions.
+Route::middleware(['isOperator'])->group(function () {
+
+  Route::prefix('matches')->group(function () {
+    Route::get('/', 'MatchController@index')->name('matches');
+    Route::post('/list', 'MatchController@list');
+    Route::get('/get-started', 'MatchController@getStarted');
+    Route::post('/{match_id}/toggle-meron', 'MatchController@toggleMeron');
+    Route::post('/{match_id}/toggle-wala', 'MatchController@toggleWala');
+    Route::post('/{match_id}/{match_bet_status}/update-bet-status', 'MatchController@updateMatchBetStatus');
+    Route::post('/{match_id}/{match_status}/{winner}/update-match-status', 'MatchController@updateMatchStatus');
+    Route::post('/{match_id}/update-display', 'MatchController@updatedisplay');
+    Route::post('/{match_id}/hold', 'MatchController@hold')->whereNumber('match_id');
+    Route::get('/bridge-status', 'MatchController@bridgeStatus');
+  });
+
+});
+
 Route::middleware(['isAdmin'])->group(function () {
 
   Route::get('/dashboard', 'PageController@dashboard')->name('dashboard');
@@ -68,18 +86,7 @@ Route::middleware(['isAdmin'])->group(function () {
   });
 
   Route::prefix('matches')->group(function () {
-    Route::get('/', 'MatchController@index')->name('matches');
-    Route::post('/list', 'MatchController@list');
-    Route::get('/get-started', 'MatchController@getStarted');
     Route::get('/new-match', 'MatchController@newMatch');
-    Route::post('/{match_id}/toggle-meron', 'MatchController@toggleMeron');
-    Route::post('/{match_id}/toggle-wala', 'MatchController@toggleWala');
-    Route::post('/{match_id}/{match_bet_status}/update-bet-status', 'MatchController@updateMatchBetStatus');
-    Route::post('/{match_id}/{match_status}/{winner}/update-match-status', 'MatchController@updateMatchStatus');
-    Route::post('/{match_id}/update-display', 'MatchController@updatedisplay');
-    Route::post('/{match_id}/hold', 'MatchController@hold')->whereNumber('match_id');
-    Route::get('/bridge-status', 'MatchController@bridgeStatus');
-
     Route::post('/find/{match_id}', 'MatchController@find');
     Route::delete('/{match_id}', 'MatchController@delete');
   });
