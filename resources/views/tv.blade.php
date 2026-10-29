@@ -214,6 +214,7 @@ $isNavbar = false;
     right: 0;
     top: 50%;
     transform: translateY(-50%);
+    z-index: 2;
     padding: 1.6vh 0;
     background: rgba(7, 8, 13, 0.82);
     letter-spacing: 0.22em;
