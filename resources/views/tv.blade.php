@@ -412,7 +412,7 @@ function init() {
 
 function renderCurrentMatch(match) {
     $("#match-bet-status")
-      .text(match.match_bet_status ? "Betting " + match.match_bet_status : "—")
+      .text(match.match_bet_status || "—")
       .toggleClass("is-closed", match.match_bet_status == 'Closed');
 
     $('#match-number').text(match.match_number);
