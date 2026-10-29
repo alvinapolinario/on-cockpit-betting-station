@@ -58,10 +58,17 @@ $isNavbar = false;
     color: #d4af37;
   }
 
+  .tv-kicker {
+    letter-spacing: 0.12em;
+  }
+
   .tv-event {
-    margin: 0.2vh 0 0;
-    font-size: clamp(16px, 1.5vw, 28px);
-    color: #c8c2b4;
+    margin: 0.4vh 0 0;
+    font-family: 'Oswald', Impact, sans-serif;
+    font-size: clamp(22px, 2.4vw, 44px);
+    font-weight: 600;
+    line-height: 1.05;
+    color: #f4f1ea;
     text-transform: uppercase;
   }
 
@@ -104,27 +111,26 @@ $isNavbar = false;
 
   #match-bet-status {
     display: inline-block;
-    min-width: 8vw;
-    padding: 0.4vh 1.2vw;
-    border: 1px solid #3de28a;
-    color: #3de28a;
+    min-width: 14vw;
+    padding: 0.8vh 1.4vw;
+    background: #1f9d55;
+    color: #fff;
     font-family: 'Oswald', Impact, sans-serif;
-    font-size: clamp(28px, 4vw, 64px);
-    letter-spacing: 0.12em;
+    font-size: clamp(24px, 2.8vw, 52px);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-align: center;
     text-transform: uppercase;
   }
 
-  #match-bet-status.orange {
-    border-color: #ff7a18;
-    color: #ff7a18;
-    background: rgba(255, 122, 24, 0.12);
-    box-shadow: 0 0 24px rgba(255, 122, 24, 0.25);
+  #match-bet-status.is-closed {
+    background: #c81e3a;
   }
 
   .tv-lanes {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: 1fr minmax(130px, 11vw) 1fr;
     gap: 1vw;
     min-height: 0;
   }
@@ -203,38 +209,59 @@ $isNavbar = false;
 
   .tv-disabled {
     display: none;
-    margin-top: 1vh;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    padding: 1.6vh 0;
+    background: rgba(7, 8, 13, 0.82);
     letter-spacing: 0.22em;
-    font-size: clamp(18px, 2vw, 34px);
+    font-family: 'Oswald', Impact, sans-serif;
+    font-size: clamp(28px, 3.4vw, 60px);
     color: #fff;
   }
 
-  .tv-core {
-    width: 1.1vw;
-    min-width: 10px;
+  .tv-tally {
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 0.8vh;
+    padding: 0.8vh 0.5vw;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10, 12, 18, 0.72);
+  }
+
+  .tv-tally-item {
     display: flex;
-    align-items: stretch;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    background: linear-gradient(180deg, transparent, rgba(212, 175, 55, 0.45), transparent);
+    min-height: 0;
+    color: #fff;
   }
 
-  .tv-pot-label {
-    margin: 0;
-    letter-spacing: 0.22em;
+  .tv-tally-item span {
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    font-size: clamp(12px, 1vw, 16px);
-    color: #9b9383;
+    font-size: clamp(12px, 1vw, 18px);
   }
 
-  .tv-pot {
-    margin: 0;
+  .tv-tally-item strong {
     font-family: 'Oswald', Impact, sans-serif;
-    font-size: clamp(22px, 2.4vw, 40px);
-    color: #f3e6c0;
+    font-size: clamp(26px, 3vw, 54px);
+    line-height: 1;
   }
+
+  .tv-tally-item.is-meron { background: #c81e3a; }
+  .tv-tally-item.is-wala { background: #128aa3; }
+  .tv-tally-item.is-draw { background: #1f8a4c; }
+  .tv-tally-item.is-cancelled { background: #4b5563; }
 
   .tv-tape {
-    padding: 1.1vh 1vw 0.4vh;
+    --ball: 4.4vh;
+    --ball-gap: 0.6vh;
+    padding: 1vh 1vw 0.4vh;
     border-top: 1px solid rgba(212, 175, 55, 0.2);
   }
 
@@ -242,15 +269,16 @@ $isNavbar = false;
     margin: 0 0 0.8vh;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    font-size: clamp(11px, 1vw, 15px);
+    font-size: clamp(12px, 1.1vw, 18px);
     color: #9b9383;
   }
 
   #fight-history-grid {
     display: flex;
     flex-wrap: nowrap;
-    gap: 10px;
+    gap: var(--ball-gap);
     align-items: flex-start;
+    height: calc(var(--ball) * 5 + var(--ball-gap) * 4);
     overflow-x: auto;
     max-width: 100%;
     scrollbar-width: none;
@@ -260,22 +288,31 @@ $isNavbar = false;
     display: none;
   }
 
+  .tv-tape-empty {
+    margin: 0;
+    align-self: center;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: clamp(14px, 1.4vw, 24px);
+    color: #6b6556;
+  }
+
   .fight-history-column {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 46px;
+    gap: var(--ball-gap);
+    min-width: var(--ball);
   }
 
   .fight-history-ball {
-    width: 46px;
-    min-height: 46px;
+    width: var(--ball);
+    height: var(--ball);
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     font-family: 'Oswald', Impact, sans-serif;
-    font-size: 18px;
+    font-size: calc(var(--ball) * 0.42);
     font-weight: 700;
     color: #fff;
   }
@@ -389,27 +426,17 @@ function init() {
 }
 
 function renderCurrentMatch(match) {
-    $("#match-bet-status").text(match.match_bet_status);
-
-    if(match.match_bet_status == 'Closed')
-    {
-      $("#match-bet-status").addClass("orange");
-    }
-    else
-    {
-      $("#match-bet-status").removeClass("orange");
-    }
+    $("#match-bet-status")
+      .text(match.match_bet_status ? "Betting " + match.match_bet_status : "—")
+      .toggleClass("is-closed", match.match_bet_status == 'Closed');
 
     $('#match-number').text(match.match_number);
 
     $('#meron-bet').text(formatCurrency(match.meron_total_bet));
     $('#wala-bet').text(formatCurrency(match.wala_total_bet));
 
-
-    $('#meron-odds').text(match.meron_odds);
-    $('#wala-odds').text(match.wala_odds);
-
-    $('#total-bets').text(formatCurrency(match.meron_total_bet + match.wala_total_bet));
+    $('#meron-odds').text(formatOdds(match.meron_odds));
+    $('#wala-odds').text(formatOdds(match.wala_odds));
 
     $("#meron-bet-status").text(match.meron_bet_status ? "DISABLED" : "").toggle(!!match.meron_bet_status);
     $("#wala-bet-status").text(match.wala_bet_status ? "DISABLED" : "").toggle(!!match.wala_bet_status);
@@ -432,14 +459,13 @@ window.Echo.channel("match-updates")
     renderCurrentMatch(e.match);
 });
 
-let meronWins = 0;
-let walaWins = 0;
-
 function renderFightHistory(matches) {
-    if (!Array.isArray(matches) || matches.length === 0) return;
+    if (!Array.isArray(matches)) return;
 
     let fightHistoryGrid = document.getElementById("fight-history-grid");
     fightHistoryGrid.innerHTML = "";
+
+    let tally = { Meron: 0, Wala: 0, Draw: 0, Cancelled: 0 };
 
     let currentColumn;
     let lastResult = null;
@@ -468,6 +494,8 @@ function renderFightHistory(matches) {
             resultType = "Cancelled";
         }
 
+        tally[resultType]++;
+
        if (!currentColumn || currentColumn.children.length >= 5 || resultType !== lastResult) {
           currentColumn = document.createElement("div");
           currentColumn.classList.add("fight-history-column");
@@ -483,14 +511,16 @@ function renderFightHistory(matches) {
         currentColumn.appendChild(ball);
     });
 
+    if (!fightHistoryGrid.children.length) {
+        fightHistoryGrid.innerHTML = '<p class="tv-tape-empty">No results yet</p>';
+    }
+
     fightHistoryGrid.scrollLeft = fightHistoryGrid.scrollWidth;
 
-
-
-
-
-    // document.getElementById("meron-total-wins").textContent = meronWins;
-    // document.getElementById("wala-total-wins").textContent = walaWins;
+    $('#tally-meron').text(tally.Meron);
+    $('#tally-wala').text(tally.Wala);
+    $('#tally-draw').text(tally.Draw);
+    $('#tally-cancelled').text(tally.Cancelled);
 }
 
 window.Echo.channel("fight-history")
@@ -529,6 +559,21 @@ function formatCurrency(amount) {
 
     return formatted.replace(/₱\s?/, '');
 }
+
+function formatOdds(odds) {
+    let value = parseFloat(odds);
+    return isNaN(value) ? "0.00" : value.toFixed(2);
+}
+
+function updateClock() {
+    $('#tv-clock').text(new Date().toLocaleString('en-PH', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit'
+    }));
+}
+
+updateClock();
+setInterval(updateClock, 15000);
 
 function showFullScreen(fightNumber, winner, odds, match_status) {
     isFullScreenMode = true;
@@ -592,7 +637,7 @@ function hideFullScreen() {
 <div class="tv-stage" id="main">
   <header class="tv-mast">
     <div>
-      <p class="tv-kicker">Live board</p>
+      <p class="tv-kicker">{{ \App\Models\AppSetting::appName() }} · <span id="tv-clock"></span></p>
       <p class="tv-event">{{ $event->event_name ?? 'No active event' }}</p>
     </div>
     <div class="tv-fight">
@@ -602,7 +647,6 @@ function hideFullScreen() {
       </div>
     </div>
     <div class="tv-status">
-      <p class="tv-status-label">Betting</p>
       <span id="match-bet-status">—</span>
     </div>
   </header>
@@ -615,9 +659,12 @@ function hideFullScreen() {
       <span id="meron-bet-status" class="tv-disabled blinking-text white"></span>
     </article>
 
-    <div class="tv-core">
-      <p class="tv-pot hidden" id="total-bets"></p>
-    </div>
+    <aside class="tv-tally">
+      <div class="tv-tally-item is-meron"><span>Meron</span><strong id="tally-meron">0</strong></div>
+      <div class="tv-tally-item is-wala"><span>Wala</span><strong id="tally-wala">0</strong></div>
+      <div class="tv-tally-item is-draw"><span>Draw</span><strong id="tally-draw">0</strong></div>
+      <div class="tv-tally-item is-cancelled"><span>Cancelled</span><strong id="tally-cancelled">0</strong></div>
+    </aside>
 
     <article class="tv-lane bg-blue" id="card_wala">
       <p class="tv-side">WALA</p>
@@ -628,7 +675,7 @@ function hideFullScreen() {
   </section>
 
   <footer class="tv-tape">
-    <p class="tv-tape-title">Result tape</p>
+    <p class="tv-tape-title">Results</p>
     <div id="fight-history-grid" class="fight-history-grid"></div>
   </footer>
 </div>
