@@ -79,29 +79,14 @@ $isNavbar = false;
     align-items: center;
   }
 
-  .tv-fight-mark {
-    width: clamp(110px, 11vw, 180px);
-    height: clamp(110px, 11vw, 180px);
-    display: grid;
-    place-items: center;
-    margin: 0.4vh 0 0;
-    border-radius: 50%;
-    border: 3px solid #d4af37;
-    background:
-      radial-gradient(circle at 35% 30%, rgba(255, 236, 179, 0.22), transparent 46%),
-      radial-gradient(circle at 50% 50%, #1a1408 0%, #0b0c10 72%);
-    box-shadow:
-      0 0 0 6px rgba(212, 175, 55, 0.12),
-      0 0 28px rgba(212, 175, 55, 0.28);
-  }
-
-  .tv-fight-number {
+  .tv-fight-label {
     margin: 0;
     line-height: 1;
     font-family: 'Oswald', Impact, sans-serif;
-    font-size: clamp(42px, 5.2vw, 88px);
+    font-size: clamp(36px, 4.4vw, 80px);
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: #f3e6c0;
   }
 
@@ -641,10 +626,7 @@ function hideFullScreen() {
       <p class="tv-event">{{ $event->event_name ?? 'No active event' }}</p>
     </div>
     <div class="tv-fight">
-      <p class="tv-kicker">Fight</p>
-      <div class="tv-fight-mark">
-        <span class="tv-fight-number" id="match-number">—</span>
-      </div>
+      <p class="tv-fight-label">Fight #<span id="match-number">—</span></p>
     </div>
     <div class="tv-status">
       <span id="match-bet-status">—</span>
